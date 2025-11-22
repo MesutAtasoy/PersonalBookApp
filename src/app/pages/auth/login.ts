@@ -1,13 +1,19 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
-import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LayoutService } from '@/layout/service/layout.service';
 import { AppConfigurator } from '@/layout/components/app.configurator';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { ButtonModule } from 'primeng/button';
+import { MessageService } from 'primeng/api';
+import { AuthService } from "@/core/auth/auth.service";
+import {MessageModule} from "primeng/message";
+import {Toast, ToastModule} from "primeng/toast";
+import {NgClass, NgIf} from "@angular/common";
+import {Ripple} from "primeng/ripple";
 
 @Component({
     selector: 'app-login',
@@ -16,13 +22,20 @@ import { ButtonModule } from 'primeng/button';
         CheckboxModule,
         InputTextModule,
         FormsModule,
+        ReactiveFormsModule,
         RouterModule,
         AppConfigurator,
         IconFieldModule,
         InputIconModule,
-        ButtonModule
+        ButtonModule,
+        MessageModule,
+        ToastModule,
+        NgClass,
+        Ripple,
+        NgIf,
     ],
     template: `
+        <p-toast position="top-right"></p-toast>
         <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 1600 800"
@@ -63,81 +76,122 @@ import { ButtonModule } from 'primeng/button';
         </svg>
         <div class="px-8 min-h-screen flex justify-center items-center">
             <div
-                class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded py-16 px-6 md:px-16 z-10"
-            >
+                class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded py-16 px-6 md:px-16 z-10">
                 <div class="mb-6">
-                    <div
-                        class="text-surface-900 dark:text-surface-0 text-xl font-bold mb-2"
-                    >
+                    <div class="text-surface-900 dark:text-surface-0 text-xl font-bold mb-2">
                         Log in
                     </div>
-                    <span
-                        class="text-surface-600 dark:text-surface-200 font-medium"
-                        >Please enter your details</span
-                    >
+                    <span class="text-surface-600 dark:text-surface-200 font-medium">Please enter your details</span>
                 </div>
-                <div class="flex flex-col">
+
+                <form [formGroup]="signInForm" (ngSubmit)="signIn()" class="flex flex-col">
                     <p-iconfield class="w-full mb-6">
-                        <p-inputicon class="pi pi-envelope" />
+                        <p-inputicon class="pi pi-user"/>
                         <input
-                            id="email"
+                            id="username"
                             type="text"
                             pInputText
+                            formControlName="username"
                             class="w-full md:w-100"
-                            placeholder="Email"
+                            placeholder="Username"
+                            [ngClass]="{'p-invalid': signInForm.get('username')?.invalid && signInForm.get('username')?.touched}"
                         />
                     </p-iconfield>
+                    <small *ngIf="signInForm.get('username')?.invalid && signInForm.get('username')?.touched"
+                           class="p-error block mb-4">
+                        Username is required
+                    </small>
 
                     <p-iconfield class="w-full mb-6">
-                        <p-inputicon class="pi pi-lock" />
+                        <p-inputicon class="pi pi-lock"/>
                         <input
                             id="password"
                             type="password"
                             pInputText
+                            formControlName="password"
                             class="w-full md:w-100"
                             placeholder="Password"
+                            [ngClass]="{'p-invalid': signInForm.get('password')?.invalid && signInForm.get('password')?.touched}"
                         />
                     </p-iconfield>
+                    <small *ngIf="signInForm.get('password')?.invalid && signInForm.get('password')?.touched"
+                           class="p-error block mb-4">
+                        Password is required
+                    </small>
 
-                    <div class="mb-6 flex flex-wrap gap-4">
-                        <div class="flex items-center">
-                            <p-checkbox
-                                name="checkbox"
-                                value="val"
-                                [(ngModel)]="rememberMe"
-                                styleClass="mr-2"
-                                class="flex"
-                                [binary]="true"
-                            ></p-checkbox>
-                            <label
-                                for="checkbox"
-                                class="text-surface-900 dark:text-surface-0 font-medium mr-20"
-                                >Remember Me</label
-                            >
-                        </div>
-                        <a
-                            class="text-surface-600 dark:text-surface-200 cursor-pointer hover:text-primary ml-auto transition-colors duration-300"
-                            >Reset password</a
-                        >
-                    </div>
+
                     <button
+                        type="submit"
                         pButton
                         pRipple
-                        label="Log In"
                         class="w-full"
-                        [routerLink]="['/']"
-                    ></button>
-                </div>
+                        [disabled]="signInForm.invalid || loading">
+                        <i *ngIf="loading" class="pi pi-spin pi-spinner mr-2"></i>
+                        <span>Log In</span>
+                    </button>
+                </form>
             </div>
         </div>
 
+
         <app-configurator [simple]="true"/>
     `,
-})
-export class Login {
-    rememberMe: boolean = false;
+    providers: [MessageService], // <-- ADD THIS
 
+})
+export class Login implements OnInit {
+    loading = false;
+    messages: any[] = [];
+    signInForm!: FormGroup;
     LayoutService = inject(LayoutService);
+    private messageService = inject(MessageService);
 
     isDarkTheme = computed(() => this.LayoutService.isDarkTheme());
+
+    constructor(
+        private _activatedRoute: ActivatedRoute,
+        private _authService: AuthService,
+        private _formBuilder: FormBuilder,
+        private _router: Router
+    ) {
+    }
+
+    ngOnInit() {
+        this.signInForm = this._formBuilder.group({
+            username     : ['', [Validators.required, Validators.email]],
+            password  : ['', Validators.required],
+            rememberMe: ['']
+        });
+    }
+
+    signIn(): void {
+        // Return if the form is invalid
+        if (this.signInForm.invalid) {
+            this.signInForm.markAllAsTouched();
+            return;
+        }
+
+        this.loading = true;
+        this.signInForm.disable();
+
+        this._authService.signIn({
+            username: this.signInForm.value.username,
+            password: this.signInForm.value.password
+        }).subscribe({
+            next: () => {
+                const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/';
+                this._router.navigateByUrl(redirectURL);
+            },
+            error: (error) => {
+                this.loading = false;
+                this.signInForm.enable();
+
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: error?.exceptionMessage?.message || 'Login failed. Please check your credentials.'
+                });
+            }
+        });
+    }
 }
