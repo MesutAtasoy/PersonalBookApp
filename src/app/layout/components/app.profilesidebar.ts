@@ -1,8 +1,12 @@
-import { Component, computed } from '@angular/core';
+import {Component, computed, OnDestroy} from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DrawerModule } from 'primeng/drawer';
 import { BadgeModule } from 'primeng/badge';
 import { LayoutService } from '@/layout/service/layout.service';
+import {AuthService} from "@/core/auth/auth.service";
+import {finalize, Subject, takeUntil, takeWhile, timer} from "rxjs";
+import {Router} from "@angular/router";
+import {tap} from "rxjs/operators";
 
 @Component({
     selector: '[app-profilesidebar]',
@@ -64,6 +68,7 @@ import { LayoutService } from '@/layout/service/layout.service';
                     <li>
                         <a
                             class="cursor-pointer flex mb-4 p-4 items-center border border-surface-200 dark:border-surface-700 rounded hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors duration-150"
+                            (click)="onSignOut()"
                         >
                             <span>
                                 <i
@@ -75,7 +80,7 @@ import { LayoutService } from '@/layout/service/layout.service';
                                 <p
                                     class="text-surface-500 dark:text-surface-400 m-0"
                                 >
-                                    Say good bye!
+                                    Say good bye! - {{countdown}}
                                 </p>
                             </div>
                         </a>
@@ -241,8 +246,16 @@ import { LayoutService } from '@/layout/service/layout.service';
     `,
     standalone: true
 })
-export class AppProfileSidebar {
-    constructor(public layoutService: LayoutService) {}
+export class AppProfileSidebar implements OnDestroy {
+
+    countdown: number = 5;
+
+    private _unsubscribeAll: Subject<any> = new Subject<any>();
+
+    constructor(public layoutService: LayoutService,
+                public authService: AuthService,
+                private router: Router
+                ) {}
 
     visible = computed(
         () => this.layoutService.layoutState().profileSidebarVisible,
@@ -253,5 +266,26 @@ export class AppProfileSidebar {
             ...state,
             profileSidebarVisible: false,
         }));
+    }
+
+    onSignOut(){
+
+        this.authService.signOut();
+
+        timer(1000, 1000)
+            .pipe(
+                finalize(() => {
+                    this.router.navigate(['auth/login']);
+                }),
+                takeWhile(() => this.countdown > 0),
+                takeUntil(this._unsubscribeAll),
+                tap(() => this.countdown--)
+            )
+            .subscribe();
+    }
+
+    ngOnDestroy(): void
+    {
+
     }
 }

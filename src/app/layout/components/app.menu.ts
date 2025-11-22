@@ -46,6 +46,27 @@ export class AppMenu {
                 icon: 'pi pi-th-large',
                 items: [
                     {
+                        label: 'Finance',
+                        icon: 'pi pi-fw pi-wallet',
+                        items: [
+                            {
+                                label: 'Bank Accounts',
+                                icon: 'pi pi-fw pi-building-columns',
+                                routerLink: ['/apps/finance/finance-banks/'],
+                            },
+                            {
+                                label: 'Detail',
+                                icon: 'pi pi-fw pi-list',
+                                routerLink: ['/apps/blog/detail'],
+                            },
+                            {
+                                label: 'Edit',
+                                icon: 'pi pi-fw pi-pencil',
+                                routerLink: ['/apps/blog/edit'],
+                            },
+                        ],
+                    },
+                    {
                         label: 'Blog',
                         icon: 'pi pi-fw pi-comment',
                         items: [
@@ -66,7 +87,6 @@ export class AppMenu {
                             },
                         ],
                     },
-
                     {
                         label: 'Chat',
                         icon: 'pi pi-fw pi-comments',

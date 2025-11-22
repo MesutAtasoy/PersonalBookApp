@@ -7,6 +7,11 @@ export default [
         data: { breadcrumb: 'Blog' }
     },
     {
+        path: 'finance',
+        loadChildren: () => import('./finance/finance.routes'),
+        data: { breadcrumb: 'Finance' }
+    },
+    {
         path: 'chat',
         loadComponent: () => import('./chat').then((c) => c.Chat),
         data: { breadcrumb: 'Chat' }
