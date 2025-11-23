@@ -238,8 +238,6 @@ export class BankTransactionsComponent implements OnInit {
 
         this.financeService.searchTransactionsV2(filter).subscribe({
             next: (response: any) => {
-
-                debugger;
                 this.transactions = response.payload.data;
                 this.totalRecords = response.payload.totalRecords;
                 this.loading = false;

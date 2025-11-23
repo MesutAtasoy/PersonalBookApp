@@ -11,7 +11,7 @@ import {TagModule} from "primeng/tag";
 import {MenuModule} from "primeng/menu";
 import {IconFieldModule} from "primeng/iconfield";
 import {InputIconModule} from "primeng/inputicon";
-import {MenuItem} from "primeng/api";
+import {Confirmation, ConfirmationService, MenuItem, MessageService} from "primeng/api";
 import {SkeletonModule} from "primeng/skeleton";
 import {CareerFilterRequest} from "@/core/components/career-filter/pagination.model";
 import { DataViewModule, DataView as PrimeDataView } from 'primeng/dataview';
@@ -19,7 +19,9 @@ import {PaginatorModule} from "primeng/paginator";
 import {CardModule} from "primeng/card";
 import {SelectButtonModule} from "primeng/selectbutton";
 import {SearchFilter} from "@/core/pagination/personal-book.pagination";
-import {ActivatedRoute, Router} from "@angular/router";
+import {ActivatedRoute, Router, RouterLink} from "@angular/router";
+import {ToastModule} from "primeng/toast";
+import {ConfirmDialogModule} from "primeng/confirmdialog";
 
 
 @Component({
@@ -40,9 +42,13 @@ import {ActivatedRoute, Router} from "@angular/router";
         SkeletonModule,
         PaginatorModule,
         CardModule,
-        SelectButtonModule
+        SelectButtonModule,
+        ToastModule,
+        ConfirmDialogModule
     ],
     template: `
+        <p-toast></p-toast>
+        <p-confirmDialog [style]="{width: '50vw'}" [baseZIndex]="1000"></p-confirmDialog>
         <p-dataView
             #dv
             [value]="financeAccounts"
@@ -81,7 +87,10 @@ import {ActivatedRoute, Router} from "@angular/router";
 
                     </div>
 
-                    <p-button label="Add Account" icon="pi pi-pencil" styleClass="p-button-primary" (click)="addAccount()"></p-button>
+                    <p-button
+                        label="Create Account"
+                        icon="pi pi-plus"
+                        styleClass="p-button-success" (click)="addAccount()"> </p-button>
 
                 </div>
             </ng-template>
@@ -197,7 +206,8 @@ import {ActivatedRoute, Router} from "@angular/router";
         </p-dataView>
 
         <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
-  `
+  `,
+    providers: [ConfirmationService, MessageService], // Provide services here
 })
 export class BankAccountsComponent implements OnInit {
     dummySkeletons = new Array(5); // For loading template
@@ -222,7 +232,7 @@ export class BankAccountsComponent implements OnInit {
 
     // Menu
     menuItems: MenuItem[] = [];
-    selectedBank: FinanceBank | null = null;
+    selectedAccount: FinanceAccount | null = null;
     private searchTimeout: any;
 
     @ViewChild('dv') dataView!: PrimeDataView;
@@ -234,7 +244,9 @@ export class BankAccountsComponent implements OnInit {
     constructor(public _financeService : PersonalFinanceService,
                 public _changeDetectorRef : ChangeDetectorRef,
                 public _router: Router,
-                private _activatedRoute: ActivatedRoute)
+                private _activatedRoute: ActivatedRoute,
+                private _messageService: MessageService,
+                private _confirmationService : ConfirmationService)
     {
     }
 
@@ -333,8 +345,8 @@ export class BankAccountsComponent implements OnInit {
 
     // --- UTILS ---
 
-    setMenuTarget(bank: FinanceBank) {
-        this.selectedBank = bank;
+    setMenuTarget(account: FinanceAccount) {
+        this.selectedAccount = account;
     }
 
     getSeverity(bank: FinanceBank) {
@@ -346,23 +358,37 @@ export class BankAccountsComponent implements OnInit {
             {
                 label: 'Options',
                 items: [
-                    { label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedBank) },
-                    { label: 'Edit', icon: 'pi pi-file-edit', command: () => this.edit(this.selectedBank) },
-                    { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.delete(this.selectedBank) }
+                    { label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedAccount) },
+                    { label: 'Edit', icon: 'pi pi-file-edit', command: () => this.edit(this.selectedAccount) },
+                    { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.delete(this.selectedAccount) }
                 ]
             }
         ];
     }
 
-    viewDetail(bank: FinanceBank | null) {
-        if (bank && bank.id) {
-            this._router.navigate(['apps/finance/finance-banks/' + bank.id + '/detail/overview']);
+    viewDetail(account: FinanceAccount | null) {
+        if (account && account.id) {
+            this._router.navigate(['apps/finance/finance-banks/banks/' + this.bankId + '/accounts/' + account.id + '/overview']);
         } else {
             console.warn("Cannot view detail: Bank ID is missing.");
         }
     }
-    edit(bank: FinanceBank | null) { console.log('Edit', bank); }
-    delete(bank: FinanceBank | null) { console.log('Delete', bank); }
+    edit(bank: FinanceAccount | null) { console.log('Edit', bank); }
+    delete(account: FinanceAccount | null) {
+        this._confirmationService.confirm({
+            message: `Are you sure you want to delete the account: **${account?.name}** (${account?.type})? This action cannot be undone.`,
+            header: 'Confirm Account Deletion',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => {
+                this.deleteAccount(account?.id?.toString() ?? '');
+            },
+            reject: () => {
+                this._messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled'});
+            }
+        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+    }
 
     layout: string = 'grid'; // Default view mode
     options: any[] = [
@@ -375,6 +401,23 @@ export class BankAccountsComponent implements OnInit {
     }
 
     addAccount(){
+        this._router.navigate(['apps/finance/finance-banks/' + this.bankId + '/detail/accounts/create']);
+    }
 
+
+    // --- Deletion Service Call ---
+
+    deleteAccount(accountId: string): void {
+        // Assume the service method is called deleteAccount(accountId)
+        this._financeService.deleteFinanceAccount(accountId).subscribe({
+            next: () => {
+                this._messageService.add({severity: 'success', summary: 'Deleted', detail: `Account ID ${accountId} deleted successfully.`});
+                this.loadAccountsData();
+            },
+            error: (err) => {
+                console.error('Deletion failed:', err);
+                this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete account ID ${accountId}.`});
+            }
+        });
     }
 }

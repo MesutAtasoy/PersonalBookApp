@@ -415,12 +415,8 @@ export class PersonalFinanceService {
     }
 
 
-    getCurrencyCodes(): Observable<CurrencyCode[]> {
-        return this._apiClient.get<CurrencyCode[]>('api/apps/finance/currencies').pipe(
-            tap((response: any) => {
-                this._currencies.next(response.payload ?? []);
-            })
-        );
+    getCurrencyCodes(): Observable<ApiResponse> {
+        return this._apiClient.get<ApiResponse>('api/apps/finance/currencies');
     }
 
     addCurrencyCode(currencyCode: CurrencyCode): Observable<CurrencyCode> {
@@ -476,12 +472,7 @@ export class PersonalFinanceService {
 
 
     getFinanceAccount(id: string): Observable<FinanceAccount> {
-        return this._apiClient.get<FinanceAccount>('api/apps/finance/accounts/' + id).pipe(
-            tap((response: any) => {
-                this._financeAccount.next(response.payload ?? null);
-            }),
-            map((response: any) => response.payload)
-        );
+        return this._apiClient.get<FinanceAccount>('api/apps/finance/accounts/' + id);
     }
 
     getFinanceAccounts(): Observable<FinanceAccount[]> {
