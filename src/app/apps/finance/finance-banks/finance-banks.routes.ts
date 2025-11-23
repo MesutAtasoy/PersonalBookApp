@@ -14,6 +14,7 @@ import {AccountTransactionsComponent} from "@/apps/finance/finance-accounts/deta
 import {
     AccountInstallmentPlansComponent
 } from "@/apps/finance/finance-accounts/detail/account-installment-plans.component";
+import {AccountDangerZoneComponent} from "@/apps/finance/finance-accounts/detail/account-danger-zone.component";
 
 export default [
     {
@@ -44,6 +45,7 @@ export default [
             { path: 'buckets', component: AccountBucketsComponent },
             { path: 'transactions', component: AccountTransactionsComponent },
             { path: 'installments', component: AccountInstallmentPlansComponent },
+            { path: 'danger-zone', component: AccountDangerZoneComponent },
         ]
     },
 ] as Routes;

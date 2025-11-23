@@ -227,6 +227,13 @@ export class AccountDetailComponent implements OnInit {
                 description: 'Configure bank preferences and integration settings.',
                 value: 'settings',
                 routerLink: ['settings']
+            },
+            {
+                label: 'Danger Zone',
+                icon: 'pi pi-exclamation-triangle',
+                description: 'Area for high-impact actions like account closure or archival.',
+                value: 'danger-zone',
+                routerLink: ['danger-zone']
             }
         ];
     }
