@@ -64,9 +64,10 @@ import {FinanceAccountType} from "@/apps/finance/finance.types";
                 </div>
             </div>
 
-            <p-divider />
 
             <ng-container *ngIf="isCreditCard">
+                <p-divider />
+
                 <h3 class="text-xl font-semibold mb-2">Credit Card Details</h3>
                 <p class="mb-4 text-color-secondary">Credit and Payment Schedule</p>
                 <div class="col-12 md:col-4">
@@ -112,6 +113,8 @@ import {FinanceAccountType} from "@/apps/finance/finance.types";
             </ng-container>
 
             <ng-container *ngIf="isLoan">
+                <p-divider />
+
                 <h3 class="text-xl font-semibold mb-2">Loan Details</h3>
                 <p class="mb-4 text-color-secondary">Overview principal amount, interest rate, and installment schedule</p>
 
