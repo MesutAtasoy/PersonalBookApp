@@ -74,7 +74,7 @@ import {PersonalFinanceService} from "@/apps/finance/finance.service"; // Import
                 <p-divider />
 
                 <h3 class="text-xl font-semibold mb-2">General Information</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                <div class="grid grid-rows-1 md:grid-rows-3 lg:grid-rows-3 gap-4">
 
                     <div class="p-3 surface-200 border-round">
                         <span class="text-xl font-medium block">Current Balance</span>
@@ -96,7 +96,7 @@ import {PersonalFinanceService} from "@/apps/finance/finance.service"; // Import
 
                 <h3 class="text-xl font-semibold mb-2">Account Details</h3>
                 <p class="mb-4 text-color-secondary">Name, holder details, and creation date for the account.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-rows-1 md:grid-rows-2 lg:grid-rows-4 gap-4">
                     <div class="p-3 surface-200 border-round">
                         <span class="text-xl font-medium block">Account Holder Name</span>
                         <span class="text-2xl font-bold">{{ account?.accountHolderName || "Not provided" }}</span>
@@ -121,7 +121,7 @@ import {PersonalFinanceService} from "@/apps/finance/finance.service"; // Import
 
                     <h3 class="text-xl font-semibold mb-2">Credit Card Details</h3>
                     <p class="mb-4 text-color-secondary">Credit and Payment Schedule</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="grid grid-rows-1 md:grid-rows-2 lg:grid-rows-3 gap-4">
                         <div class="p-3 surface-200 border-round">
                             <span class="text-xl font-medium block">Credit Limit</span>
                             <span class="text-2xl font-bold">{{ account?.creditLimit | currency: account?.currencyCode?.code || 'USD' || "Not provided" }}</span>
@@ -159,7 +159,7 @@ import {PersonalFinanceService} from "@/apps/finance/finance.service"; // Import
                     <h3 class="text-xl font-semibold mb-2">Loan Details</h3>
                     <p class="mb-4 text-color-secondary">Overview principal amount, interest rate, and installment schedule</p>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-rows-1 md:grid-rows-2 lg:grid-rows-4 gap-4">
                         <div class="p-3 surface-200 border-round">
                             <span class="text-xl font-medium block">Loan Number</span>
                             <span class="text-2xl font-bold">{{ account?.loanNumber || "Not provided" }}</span>

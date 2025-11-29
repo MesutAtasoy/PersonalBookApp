@@ -359,7 +359,6 @@ export class BankAccountsComponent implements OnInit {
                 label: 'Options',
                 items: [
                     { label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedAccount) },
-                    { label: 'Edit', icon: 'pi pi-file-edit', command: () => this.edit(this.selectedAccount) },
                     { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.delete(this.selectedAccount) }
                 ]
             }

@@ -1255,22 +1255,7 @@ export class PersonalFinanceService {
     }
 
     searchFinanceInstallmentPlans(searchFilter: FinanceInstallmentPlanSearchFilter) {
-        return this._apiClient.post<FinanceInstallmentPlanDto[]>('api/apps/finance/installment-plans/search', searchFilter)
-            .pipe(
-                tap((response: any) => {
-                    const payload = response.payload;
-                    this._financeInstallmentPlans.next(payload.data ?? []);
-                    this._financeInstallmentPlanPagination.next({
-                        pageNumber: (searchFilter.paginationFilter?.pageNumber ?? 0) - 1,
-                        pageSize: searchFilter.paginationFilter?.pageSize ?? 0,
-                        totalPages: payload.totalPages,
-                        totalRecords: payload.totalRecords,
-                        nextPage: (payload.nextPage != null) ? payload.nextPage - 1 : null,
-                        previousPage: payload.previousPage
-                    });
-                }),
-                map((response: any) => response.payload)
-            );
+        return this._apiClient.post<FinanceInstallmentPlanDto[]>('api/apps/finance/installment-plans/search', searchFilter);
     }
 
     getInstallmentDetails(planId: string): Observable<FinanceInstallmentDetailDto[]> {

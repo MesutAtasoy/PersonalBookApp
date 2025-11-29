@@ -318,7 +318,6 @@ export class FinanceBankListComponent implements OnInit {
                 label: 'Options',
                 items: [
                     { label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedBank) },
-                    { label: 'Edit', icon: 'pi pi-file-edit', command: () => this.edit(this.selectedBank) },
                     { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.delete(this.selectedBank) }
                 ]
             }
@@ -332,7 +331,6 @@ export class FinanceBankListComponent implements OnInit {
             console.warn("Cannot view detail: Bank ID is missing.");
         }
     }
-    edit(bank: FinanceBank | null) { console.log('Edit', bank); }
     delete(bank: FinanceBank | null) { console.log('Delete', bank); }
 
     layout: string = 'grid'; // Default view mode

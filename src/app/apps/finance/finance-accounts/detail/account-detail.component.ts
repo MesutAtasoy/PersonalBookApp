@@ -204,21 +204,21 @@ export class AccountDetailComponent implements OnInit {
                 label: 'Cards',
                 icon: 'pi pi-credit-card',
                 description: 'View and manage all debit and credit cards linked to this account.',
-                value: 'accounts',
+                value: 'cards',
                 routerLink: ['cards']
             },
             {
                 label: 'Buckets',
                 icon: 'pi pi-wallet',
                 description: 'Manage your savings goals or virtual sub-accounts linked to the main balance.',
-                value: 'accounts',
+                value: 'buckets',
                 routerLink: ['buckets']
             },
             {
                 label: 'Installment Plans',
                 icon: 'pi pi-calendar',
                 description: 'Manage recurring bills, subscription payments, or loan installment schedules tied to this account.',
-                value: 'accounts',
+                value: 'installments',
                 routerLink: ['installments']
             },
             {
