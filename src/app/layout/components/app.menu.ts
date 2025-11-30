@@ -55,14 +55,9 @@ export class AppMenu {
                                 routerLink: ['/apps/finance/finance-banks/'],
                             },
                             {
-                                label: 'Detail',
-                                icon: 'pi pi-fw pi-list',
-                                routerLink: ['/apps/blog/detail'],
-                            },
-                            {
-                                label: 'Edit',
-                                icon: 'pi pi-fw pi-pencil',
-                                routerLink: ['/apps/blog/edit'],
+                                label: 'Transactions',
+                                icon: 'pi pi-fw pi-history',
+                                routerLink: ['/apps/finance/transactions/'],
                             },
                         ],
                     },
