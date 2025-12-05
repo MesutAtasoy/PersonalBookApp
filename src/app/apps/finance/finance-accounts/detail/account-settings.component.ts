@@ -29,7 +29,6 @@ import {Divider} from "primeng/divider";
         InputNumberModule,
         SkeletonModule,
         ToastModule,
-        DatePipe,
         Divider
     ],
     providers: [MessageService, PersonalFinanceService],

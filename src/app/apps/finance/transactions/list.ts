@@ -346,7 +346,7 @@ export class TransactionsComponent implements OnInit {
     // --- Navigation Methods ---
     goToAddTransaction(): void {
         // Navigate to the transaction creation page. Adjust the route path as needed for your application's routing setup.
-        this.router.navigate(['/finance/transactions/new']);
+        this.router.navigate(['apps/finance/transactions/create']);
     }
 
     // --- Data Fetching Methods ---
