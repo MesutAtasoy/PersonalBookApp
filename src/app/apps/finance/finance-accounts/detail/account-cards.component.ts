@@ -261,9 +261,9 @@ export class AccountCardsComponent implements OnInit, OnDestroy {
         private route: ActivatedRoute,
         private fb: FormBuilder,
         private financeService: PersonalFinanceService,
-        private messageService: MessageService,
         private datePipe: DatePipe,
-        private confirmationService : ConfirmationService
+        private confirmationService : ConfirmationService,
+        private messageService: MessageService
     ) {
         this.initForm();
         this.initYears();

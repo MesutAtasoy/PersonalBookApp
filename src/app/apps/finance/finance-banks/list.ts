@@ -1,17 +1,16 @@
-import {CommonModule, NgOptimizedImage} from '@angular/common';
+import {CommonModule, DatePipe, NgOptimizedImage} from '@angular/common';
 import {ChangeDetectorRef, Component, OnInit, ViewChild} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { AvatarModule } from 'primeng/avatar';
 import {PersonalFinanceService} from "@/apps/finance/finance.service";
-import {FinanceBank} from "@/apps/finance/finance.types";
 import {ButtonModule} from "primeng/button";
 import {InputTextModule} from "primeng/inputtext";
 import {TagModule} from "primeng/tag";
 import {MenuModule} from "primeng/menu";
 import {IconFieldModule} from "primeng/iconfield";
 import {InputIconModule} from "primeng/inputicon";
-import {MenuItem} from "primeng/api";
+import {Confirmation, ConfirmationService, MenuItem, MessageService} from "primeng/api";
 import {SkeletonModule} from "primeng/skeleton";
 import {CareerFilterRequest} from "@/core/components/career-filter/pagination.model";
 import { DataViewModule, DataView as PrimeDataView } from 'primeng/dataview';
@@ -20,6 +19,15 @@ import {CardModule} from "primeng/card";
 import {SelectButtonModule} from "primeng/selectbutton";
 import {SearchFilter} from "@/core/pagination/personal-book.pagination";
 import {Router} from "@angular/router";
+// --- NEW IMPORTS for Modal ---
+import { DialogModule } from 'primeng/dialog';
+import { CheckboxModule } from 'primeng/checkbox';
+import {TextareaModule} from "primeng/textarea";
+import {Bank, BankRef, Card, FinanceBank} from "@/apps/finance/finance.types";
+import {ConfirmDialog} from "primeng/confirmdialog";
+import {Toast} from "primeng/toast";
+
+
 @Component({
     selector: 'app-finance-bank-list',
     standalone: true,
@@ -38,10 +46,27 @@ import {Router} from "@angular/router";
         SkeletonModule,
         PaginatorModule,
         CardModule,
-        SelectButtonModule
+        SelectButtonModule,
+        // New imports for the modal
+        DialogModule,
+        CheckboxModule,
+        TextareaModule,
+        ConfirmDialog,
+        Toast
     ],
+    providers: [MessageService, DatePipe, ConfirmationService],
     template: `
+        <p-toast></p-toast>
+        <p-confirmDialog [style]="{width: '50vw'}" [baseZIndex]="1000"></p-confirmDialog>
         <div class="card">
+            <div class="flex justify-content-end mb-4">
+                <p-button
+                    label="Add Bank Account"
+                    icon="pi pi-plus"
+                    (onClick)="openAddBankModal()">
+                </p-button>
+            </div>
+
             <p-dataView
                 #dv
                 [value]="financeBanks"
@@ -190,6 +215,60 @@ import {Router} from "@angular/router";
             </p-dataView>
 
             <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+            <p-dialog
+                [header]="'Add New Bank Account'"
+                [(visible)]="showAddBankModal"
+                (onHide)="resetNewAccountForm()"
+                [modal]="true"
+                [style]="{ width: '50vw' }"
+                [breakpoints]="{ '960px': '75vw', '640px': '100vw' }"
+                [draggable]="false"
+                [resizable]="false">
+
+                <div class="row">
+
+                    <div class="mt-4 col-12 field">
+                        <label for="newAccountName" class="block">Account Name *</label>
+                        <input id="newAccountName" class="w-full" type="text" pInputText [(ngModel)]="newAccountFormModel.name" required />
+                    </div>
+
+                    <div class="mt-4 col-12 field">
+                        <label for="newBankSelect" class="block">Select Bank *</label>
+                        <ng-container *ngIf="banksLoading; else bankSelectContainer">
+                            <p-skeleton height="2rem" />
+                        </ng-container>
+                        <ng-template #bankSelectContainer>
+                            <p-select
+                                id="newBankSelect"
+                                [options]="bankOptions"
+                                [(ngModel)]="newAccountFormModel.bankId"
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select a bank"
+                                required
+                                class="w-full">
+                            </p-select>
+                        </ng-template>
+                    </div>
+
+                    <div class="mt-4  col-12 field">
+                        <label for="newDescription"  class="block">Description (Optional)</label>
+                        <textarea id="newDescription" class="w-full" pInputTextarea [(ngModel)]="newAccountFormModel.description" rows="3" cols="30"></textarea>
+                    </div>
+                </div>
+
+                <ng-template pTemplate="footer">
+                    <p-button label="Cancel" icon="pi pi-times" (onClick)="showAddBankModal = false" styleClass="p-button-text"></p-button>
+                    <p-button
+                        label="Add Account"
+                        icon="pi pi-check"
+                        (onClick)="submitNewAccount()"
+                        [disabled]="!isNewAccountFormValid() || submittingNewAccount">
+                    </p-button>
+                </ng-template>
+            </p-dialog>
+
         </div>
     `
 })
@@ -198,6 +277,21 @@ export class FinanceBankListComponent implements OnInit {
     financeBanks: FinanceBank[] = [];
     dummySkeletons = new Array(5); // For loading template
     loading: boolean = true;
+
+    // --- NEW: Modal State & Form Properties ---
+    showAddBankModal: boolean = false;
+    banksLoading: boolean = false;
+    submittingNewAccount: boolean = false;
+    bankOptions: Bank[] = [];
+
+    initialNewAccountFormModel: any = {
+        name: '',
+        bankId: null,
+        description: '',
+        isActive: true,
+    };
+    newAccountFormModel: any = { ...this.initialNewAccountFormModel };
+    // ------------------------------------------
 
     // Pagination
     totalRecords: number = 0;
@@ -225,21 +319,20 @@ export class FinanceBankListComponent implements OnInit {
 
     constructor(public _financeService : PersonalFinanceService,
                 public _changeDetectorRef : ChangeDetectorRef,
-                public _router: Router)
+                public _router: Router,
+                private _confirmationService : ConfirmationService,
+                private _messageService: MessageService)
     {
     }
     ngOnInit() {
-        // initMenu called here, but loadData is triggered by DataView's onLazyLoad automatically
         this.initMenu();
     }
 
-    // --- DATA LOADING ---
+    // --- DATA LOADING (List View) ---
     loadData() {
-
-
         this.loading = true;
 
-        const pageNumber = Math.floor(this.first / this.rows) + 1; // <-- FIX: Convert 0-based index to 1-based page number
+        const pageNumber = Math.floor(this.first / this.rows) + 1; // Convert 0-based index to 1-based page number
 
         const request : SearchFilter =  {
             paginationFilter: {
@@ -250,7 +343,6 @@ export class FinanceBankListComponent implements OnInit {
                 value: this.searchQuery
             },
         };
-
 
         this._financeService.searchFinanceBanks(request).subscribe({
             next: (response: any) => {
@@ -264,6 +356,82 @@ export class FinanceBankListComponent implements OnInit {
                 this.loading = false;
             }
         });
+    }
+
+    // --- NEW: MODAL LOGIC ---
+
+    openAddBankModal() {
+        this.showAddBankModal = true;
+        this.loadBanksForModal();
+    }
+
+    loadBanksForModal() {
+        this.banksLoading = true;
+        // The API call requested by the user
+        this._financeService.getBanks().subscribe({
+            next: (response: any) => {
+                this.bankOptions = response;
+                this.banksLoading = false;
+                this._changeDetectorRef.markForCheck();
+            },
+            error: (err) => {
+                console.error('Error loading available banks:', err);
+                this.banksLoading = false;
+                this._changeDetectorRef.markForCheck();
+                // Optionally show a toast error here
+            }
+        });
+    }
+
+    isNewAccountFormValid(): boolean {
+        return !!this.newAccountFormModel.name && !!this.newAccountFormModel.bankId && !this.submittingNewAccount;
+    }
+
+    submitNewAccount() {
+        if (!this.isNewAccountFormValid()) return;
+
+        this.submittingNewAccount = true;
+
+        const newBankPayload: FinanceBank = {
+            name: this.newAccountFormModel.name,
+            description: this.newAccountFormModel.description,
+            isActive: this.newAccountFormModel.isActive,
+            // Construct the BankRef object needed for the FinanceBank API
+            bank: {
+                id: this.newAccountFormModel.bankId!,
+                name: "",
+                code: "",
+                logo: ""
+            } as BankRef,
+        };
+
+        // Assuming your service has a method to create a new FinanceBank
+        this._financeService.addFinanceBank(newBankPayload).subscribe({
+            next: (response: any) => {
+                console.log('Bank account created:', response.payload);
+                // 1. Close the modal and reset the form
+                this.showAddBankModal = false;
+                this.resetNewAccountForm();
+
+                // 2. Refresh the list (optional: reset to page 1)
+                this.dataView.first = 0;
+                this.first = 0;
+                this.loadData();
+
+                // 3. Optional: Show success notification
+            },
+            error: (err) => {
+                console.error('Error creating bank account:', err);
+                this.submittingNewAccount = false;
+                // Optional: Show error notification
+            }
+        });
+    }
+
+    resetNewAccountForm() {
+        this.newAccountFormModel = { ...this.initialNewAccountFormModel };
+        this.submittingNewAccount = false;
+        this.showAddBankModal = false;
     }
 
     // --- EVENTS ---
@@ -331,7 +499,6 @@ export class FinanceBankListComponent implements OnInit {
             console.warn("Cannot view detail: Bank ID is missing.");
         }
     }
-    delete(bank: FinanceBank | null) { console.log('Delete', bank); }
 
     layout: string = 'grid'; // Default view mode
     options: any[] = [
@@ -341,5 +508,36 @@ export class FinanceBankListComponent implements OnInit {
 
     counterArray(count: number): number[] {
         return Array(count).fill(0).map((x, i) => i);
+    }
+
+    delete(financeBank: FinanceBank | null) {
+        this._confirmationService.confirm({
+            message: `Are you sure you want to delete the finance bank whose name is ${financeBank?.name}?`,
+            header: 'Confirm Finance Bank',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => {
+                this.deleteBank(financeBank);
+            },
+            reject: () => {
+                this._messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled'});
+            }
+        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+    }
+
+    deleteBank(financeBank: FinanceBank | null){
+        this._financeService.deleteFinanceBank(financeBank?.id ?? "")
+            .subscribe({
+                next: () => {
+                    this._messageService.add({severity: 'success', summary: 'Deleted', detail: `The bank has been successfully deleted.`});
+                    this.loadData();
+
+                },
+                error: (err) => {
+                    console.error('Deletion failed:', err);
+                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete bank.`});
+                }
+            });
     }
 }
