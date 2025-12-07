@@ -10,5 +10,15 @@ export default [
         path: 'transactions',
         loadChildren: () => import('./transactions/transactions.routes'),
         data: { breadcrumb: 'Transactions' }
+    },
+    {
+        path: 'planned-payments',
+        loadChildren: () => import('./planned-payments/planned-payments.routes'),
+        data: { breadcrumb: 'Planned Payments' }
+    },
+    {
+        path: 'settings',
+        loadChildren: () => import('./settings/settings.routes'),
+        data: { breadcrumb: 'Settings' }
     }
 ] as Routes;

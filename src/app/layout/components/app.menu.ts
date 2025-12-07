@@ -59,6 +59,32 @@ export class AppMenu {
                                 icon: 'pi pi-fw pi-history',
                                 routerLink: ['/apps/finance/transactions/'],
                             },
+                            {
+                                label: 'Planned Payments',
+                                icon: 'pi pi-fw pi-wallet',
+                                routerLink: ['/apps/finance/planned-payments/'],
+                            },
+                            {
+                                label: 'Settings',
+                                icon: 'pi pi-fw pi-wallet',
+                                items: [
+                                    {
+                                        label: 'Banks',
+                                        icon: 'pi pi-fw pi-building-columns',
+                                        routerLink: ['/apps/finance/settings/banks'],
+                                    },
+                                    {
+                                        label: 'Currencies',
+                                        icon: 'pi pi-fw pi-money-bill',
+                                        routerLink: ['/apps/finance/settings/currencies'],
+                                    },
+                                    {
+                                        label: 'Categories',
+                                        icon: 'pi pi-fw pi-tags',
+                                        routerLink: ['/apps/finance/settings/categories'],
+                                    },
+                                ]
+                            }
                         ],
                     },
                     {
