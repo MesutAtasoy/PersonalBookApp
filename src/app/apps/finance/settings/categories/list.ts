@@ -1,5 +1,5 @@
 import {CommonModule} from '@angular/common';
-import {Component, OnInit, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, OnInit, ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ButtonModule} from 'primeng/button';
 import {InputTextModule} from 'primeng/inputtext';
@@ -8,16 +8,23 @@ import {Table, TableModule} from 'primeng/table';
 import {SkeletonModule} from 'primeng/skeleton';
 import {ToastModule} from 'primeng/toast';
 // Use the correct PrimeNG LazyLoadEvent type (which is imported from 'primeng/api')
-import {MessageService, ConfirmationService, LazyLoadEvent} from 'primeng/api';
+import {MessageService, ConfirmationService, LazyLoadEvent, MenuItem} from 'primeng/api';
 import {ConfirmDialogModule} from 'primeng/confirmdialog';
 import {ColorPickerModule} from 'primeng/colorpicker';
 import {SelectModule} from 'primeng/select';
 import {RippleModule} from 'primeng/ripple';
 import {PersonalFinanceService} from "@/apps/finance/finance.service";
-import {FinanceCategory} from "@/apps/finance/finance.types";
+import {FinanceBank, FinanceCategory, FinanceTransaction} from "@/apps/finance/finance.types";
 // Assuming the path is correct and models are structured like this:
 import {OrderParameter, PaginationFilter, SearchFilter} from "@/core/pagination/personal-book.pagination";
+import {Menu} from "primeng/menu";
 
+
+interface Column {
+    field: keyof FinanceCategory | 'actions'; // Use interface keys
+    header: string;
+    pipe?: 'currency' | 'date' | 'type' | 'category';
+}
 
 @Component({
     selector: 'app-finance-categories',
@@ -26,7 +33,7 @@ import {OrderParameter, PaginationFilter, SearchFilter} from "@/core/pagination/
     imports: [
         CommonModule, FormsModule, TableModule, ButtonModule, InputTextModule,
         DialogModule, SkeletonModule, ToastModule, ConfirmDialogModule,
-        ColorPickerModule, SelectModule, RippleModule
+        ColorPickerModule, SelectModule, RippleModule, Menu
     ],
     template: `
         <div class="card p-4">
@@ -35,108 +42,96 @@ import {OrderParameter, PaginationFilter, SearchFilter} from "@/core/pagination/
 
             <h2 class="text-2xl font-semibold mb-4">📚 Category Management</h2>
 
-            <div class="flex justify-content-between flex-wrap mb-4">
+            <div class="flex flex-column md:flex-row justify-end align-items-center mb-4 gap-3">
+
                 <div class="p-inputgroup w-full md:w-30rem">
-                    <span class="p-inputgroup-addon"><i class="pi pi-search"></i></span>
                     <input
                         type="text"
                         pInputText
-                        placeholder="Search categories..."
-                        [(ngModel)]="globalFilter"
-                        (input)="filterTable($event)"> </div>
+                        placeholder="Search Categories..."
+                        [(ngModel)]="searchQuery"
+                        (ngModelChange)="onSearchChange()">
 
-                <p-button
-                    label="Add New Category"
-                    icon="pi pi-plus"
-                    (onClick)="openCreateDialog()"
-                    styleClass="p-button-sm mt-3 md:mt-0">
-                </p-button>
+                    <button type="button" pButton icon="pi pi-search" (click)="loadCategories()"></button>
+                </div>
+
+                <!-- Action Buttons: Add Transaction, Filter, and Column Customization -->
+                <div class="flex justify-end items-center gap-3 w-full">
+                    <!-- NEW: Add Transaction Button -->
+                    <div class="flex items-center gap-1">
+                        <button pButton
+                                icon="pi pi-plus"
+                                label="Add Category"
+                                class="p-button-primary p-button-sm"
+                                (click)="openCreateDialog()">
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <p-table
-                #dt
-                [value]="loading ? skeletonRows : categories"
+                [value]="loading ? skeletonData : allCategories"
+                [scrollable]="true"
+                scrollHeight="1000px"
                 [paginator]="true"
-                [rows]="rowsPerPage"
-                [lazy]="true"
-                (onLazyLoad)="loadCategories($event)"
+                [rows]="rows"
                 [totalRecords]="totalRecords"
-                [loading]="loading"
-                [tableStyle]="{'min-width': '50rem'}"
-                responsiveLayout="scroll"
-                dataKey="id"
-                [globalFilterFields]="['name', 'slug']"
-                [sortField]="sortField"
-                [sortOrder]="sortOrder">
+                [lazy]="true"
+                (onLazyLoad)="onLazyLoad($event)">
 
                 <ng-template pTemplate="header">
                     <tr>
-                        <th style="width:30%" pSortableColumn="name">Name
-                            <p-sortIcon field="name"></p-sortIcon>
+                        <th *ngFor="let col of selectedColumns" [pSortableColumn]="col.field">
+                            {{ col.header }}
+                            <p-sortIcon [field]="col.field"></p-sortIcon>
                         </th>
-                        <th style="width:20%" pSortableColumn="parentId">Parent ID
-                            <p-sortIcon field="parentId"></p-sortIcon>
-                        </th>
-                        <th style="width:15%">Icon</th>
-                        <th style="width:15%">Color</th>
-                        <th style="width:20%">Actions</th>
                     </tr>
                 </ng-template>
 
                 <ng-template pTemplate="body" let-category>
-                    <tr *ngIf="!loading; else skeletonRow">
-                        <td>{{ category.name }}</td>
-                        <td>
-                            <span *ngIf="category.parentId"
-                                  class="font-mono text-xs text-400">{{ category.parentId | slice:0:8 }}...</span>
-                            <span *ngIf="!category.parentId" class="text-500">Top Level</span>
-                        </td>
-                        <td>
-                            <i *ngIf="category.icon" [class]="category.icon" [style.color]="'#' + category.color"
-                               class="text-xl"></i>
-                            <span *ngIf="!category.icon" class="text-400">N/A</span>
-                        </td>
-                        <td>
-                            <div [style.background-color]="'#' + category.color"
-                                 style="width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ccc; margin: auto;"></div>
-                        </td>
-                        <td>
-                            <p-button
-                                icon="pi pi-pencil"
-                                (onClick)="openEditDialog(category)"
-                                styleClass="p-button-text p-button-sm mr-2">
-                            </p-button>
-                            <p-button
-                                icon="pi pi-trash"
-                                (onClick)="confirmDelete(category)"
-                                styleClass="p-button-text p-button-danger p-button-sm">
-                            </p-button>
+                    <tr *ngIf="loading">
+                        <td *ngFor="let col of selectedColumns">
+                            <p-skeleton></p-skeleton>
                         </td>
                     </tr>
-                    <ng-template #skeletonRow>
-                        <tr>
-                            <td>
-                                <p-skeleton height="1rem" styleClass="w-9"></p-skeleton>
-                            </td>
-                            <td>
-                                <p-skeleton height="1rem" styleClass="w-7"></p-skeleton>
-                            </td>
-                            <td>
-                                <p-skeleton height="1rem" styleClass="w-4"></p-skeleton>
-                            </td>
-                            <td>
-                                <p-skeleton shape="circle" size="1.5rem"></p-skeleton>
-                            </td>
-                            <td>
-                                <p-skeleton height="1rem" styleClass="w-8"></p-skeleton>
-                            </td>
-                        </tr>
-                    </ng-template>
+                    <tr *ngIf="!loading">
+                        <td *ngFor="let col of selectedColumns">
+                            <ng-container [ngSwitch]="col.field">
+
+
+                                <span *ngSwitchCase="'name'">
+                                    {{ category.name  }}
+                                </span>
+
+                                <span *ngSwitchCase="'slug'">
+                                    {{ category.slug  }}
+                                </span>
+
+                                <span *ngSwitchCase="'icon'">
+                                    {{ category.icon  }}
+                                </span>
+
+                                <span *ngSwitchCase="'color'">
+                                    {{ category.color  }}
+                                </span>
+
+                                <span *ngSwitchCase="'actions'">
+                                        <button pButton icon="pi pi-ellipsis-v" class="p-button-text p-button-rounded" (click)="setMenuTarget(category); menu.toggle($event)"></button>
+
+                                </span>
+
+                            </ng-container>
+                        </td>
+                    </tr>
                 </ng-template>
+
+                <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
 
                 <ng-template pTemplate="emptymessage" *ngIf="!loading">
                     <tr>
-                        <td colspan="5" class="text-center">No categories found.</td>
+                        <td [attr.colspan]="selectedColumns.length" class="text-center p-4">
+                            No transactions found for the current criteria.
+                        </td>
                     </tr>
                 </ng-template>
 
@@ -179,6 +174,7 @@ import {OrderParameter, PaginationFilter, SearchFilter} from "@/core/pagination/
                             optionValue="id"
                             placeholder="Select a Parent Category"
                             name="parent"
+                            appendTo = "body"
                             [filter]="true"
                             [showClear]="true"
                             styleClass="w-full">
@@ -203,18 +199,35 @@ import {OrderParameter, PaginationFilter, SearchFilter} from "@/core/pagination/
 })
 export class FinanceCategoriesComponent implements OnInit {
 
+    allCategories: FinanceCategory[] = [];
+    totalRecords: number = 0;
+    loading: boolean = true;
+
+    // Pagination and Filter State
+    rows: number = 50;
+    first: number = 0;
+    searchQuery: string = '';
+    searchTimeout: any;
+    menuItems: MenuItem[] = [];
+
+    // Column Management
+    allColumns: Column[] = [
+        { field: 'name', header: 'Name' },
+        { field: 'color', header: 'Color' },
+        { field: 'slug', header: 'Slug' },
+        { field: 'icon', header: 'Icon' },
+        { field: 'actions', header: 'Actions' },
+    ];
+    selectedColumns: Column[] = [...this.allColumns.slice(0, 5)]; // Default visible columns
+
+    // Skeleton Data (to match the rows being requested)
+    skeletonData: any[] = new Array(this.rows).fill({});
+
     @ViewChild('dt') dt!: Table;
 
     categories: FinanceCategory[] = [];
-    allCategories: FinanceCategory[] = [];
     parentCategoryOptions: FinanceCategory[] = [];
 
-    loading: boolean = false;
-    skeletonRows: any[] = new Array(8).fill({});
-
-    totalRecords: number = 0;
-    rowsPerPage: number = 10;
-    globalFilter: string = '';
 
     // Store last sort state for refresh
     sortField: string = 'name';
@@ -223,16 +236,19 @@ export class FinanceCategoriesComponent implements OnInit {
     showCategoryDialog: boolean = false;
     isEdit: boolean = false;
     currentCategory: FinanceCategory = this.getEmptyCategory();
+    selectedCategory!: FinanceCategory;
 
     constructor(
         private _financeService: PersonalFinanceService,
         private messageService: MessageService,
-        private confirmationService: ConfirmationService
+        private confirmationService: ConfirmationService,
+        private _cdr: ChangeDetectorRef
     ) {
     }
 
     ngOnInit(): void {
         this.loadAllCategoriesForDropdowns();
+        this.initMenu();
     }
 
     getEmptyCategory(): FinanceCategory {
@@ -246,20 +262,6 @@ export class FinanceCategoriesComponent implements OnInit {
         };
     }
 
-    // -------------------------------------------------------------------------
-    // D A T A L O A D I N G & F I L T E R I N G
-    // -------------------------------------------------------------------------
-
-    /**
-     * Helper to safely call filterGlobal on the PrimeNG table.
-     * @param event The input event from the search box.
-     */
-    filterTable(event: Event): void {
-        const inputElement = event.target as HTMLInputElement;
-        if (this.dt) {
-            this.dt.filterGlobal(inputElement.value, 'contains');
-        }
-    }
 
     loadAllCategoriesForDropdowns(): void {
         this._financeService.getFinanceParentCategories()
@@ -273,61 +275,6 @@ export class FinanceCategoriesComponent implements OnInit {
             });
     }
 
-    /**
-     * Converts the PrimeNG LazyLoadEvent into the SearchFilter model and fetches data.
-     * @param event LazyLoadEvent from p-table
-     */
-    loadCategories(event: any): void {
-        this.loading = true;
-
-        // --- 1. Construct SearchFilter ---
-
-        // SAFELY extract event properties, falling back to 0, rowsPerPage, or 1.
-        // This handles null/undefined values emitted by the p-table event.
-        const first = event.first ?? 0;
-        const rows = event.rows ?? this.rowsPerPage;
-        const sortOrder = event.sortOrder ?? 1;
-
-        // Pagination
-        const pageNumber = (first / rows) + 1;
-        const pageSize = rows;
-
-        const paginationFilter: PaginationFilter = {pageNumber, pageSize};
-
-        // Sorting
-        const order: OrderParameter = {
-            column: event.sortField || this.sortField,
-            direction: sortOrder === 1 ? 'asc' : 'desc'
-        };
-        this.sortField = order.column ?? '';
-        this.sortOrder = sortOrder;
-
-        // Searching (Global Filter)
-        const globalSearchValue = event.globalFilter || this.globalFilter;
-        const searchParameter = globalSearchValue
-            ? {value: globalSearchValue}
-            : undefined;
-
-        const searchFilter: SearchFilter = {
-            paginationFilter,
-            order,
-            search: searchParameter
-        };
-
-        // --- 2. Call Service ---
-        this._financeService.searchFinanceCategories(searchFilter).subscribe({
-            next: (response: any) => {
-                this.categories = response.data || [];
-                this.totalRecords = response.totalCount || 0;
-                this.loading = false;
-            },
-            error: (err) => {
-                console.error('Error loading categories:', err);
-                this.messageService.add({severity: 'error', summary: 'Error', detail: 'Failed to load categories.'});
-                this.loading = false;
-            }
-        });
-    }
 
     // -------------------------------------------------------------------------
     // C R E A T E / U P D A T E
@@ -397,7 +344,7 @@ export class FinanceCategoriesComponent implements OnInit {
                 this.showCategoryDialog = false;
                 this.loadAllCategoriesForDropdowns();
                 // Refresh table by emitting a lazy load event with current state
-                this.dt.onLazyLoad.emit(this.dt.createLazyLoadMetadata());
+                this.loadCategories();
             },
             error: (err) => {
                 const message = err.error?.message || `Failed to ${action.toLowerCase()} category.`;
@@ -448,12 +395,81 @@ export class FinanceCategoriesComponent implements OnInit {
                 });
                 this.loadAllCategoriesForDropdowns();
                 // Refresh table by emitting a lazy load event with current state
-                this.dt.onLazyLoad.emit(this.dt.createLazyLoadMetadata());
+                this.loadCategories();
             },
             error: (err) => {
                 const message = err.error?.message || 'Failed to delete category.';
                 this.messageService.add({severity: 'error', summary: 'Error', detail: message});
             }
         });
+    }
+
+
+    onLazyLoad(event: any) {
+        this.first = event.first;
+        this.rows = event.rows;
+        // PrimeNG sorts are not fully implemented here, so we only pass basic info
+        this.loadCategories(event.sortField, event.sortOrder);
+    }
+
+    onSearchChange() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        this.searchTimeout = setTimeout(() => {
+            this.first = 0; // Reset pagination on new search
+            this.loadCategories(); // Trigger load after search change
+        }, 500);
+    }
+
+    loadCategories(sortField: string = '', sortOrder: number = 1): void {
+        this.loading = true;
+        this.skeletonData = new Array(this.rows).fill({});
+
+        const pageNumber = Math.floor(this.first / this.rows) + 1;
+
+        // Construct the filters array based on currentFilters state
+        const filters: any[] = [];
+
+        const filter =   {
+            query:  this.searchQuery,
+            pageNumber: pageNumber,
+            pageSize: this.rows,
+            filters: filters,
+            sorts: [
+                // Add sort logic here if needed
+            ]
+        };
+
+        this._financeService.getFinanceCategories(pageNumber, this.rows).subscribe({
+            next: (response: any) => {
+                this.allCategories = response.data;
+                this.totalRecords = response.totalRecords;
+                this.loading = false;
+                this._cdr.detectChanges();
+            },
+            error: (err: any) => {
+                this.allCategories = [];
+                this.totalRecords = 0;
+                this.loading = false;
+                this._cdr.detectChanges();
+            }
+        });
+    }
+
+    setMenuTarget(category: FinanceCategory) {
+        this.selectedCategory = category;
+    }
+
+    initMenu() {
+        this.menuItems = [
+            {
+                label: 'Options',
+                items: [
+                    { label: 'Detail', icon: 'pi pi-eye', command: () => this.openEditDialog(this.selectedCategory) },
+                    { label: 'Delete', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.confirmDelete(this.selectedCategory) }
+                ]
+            }
+        ];
     }
 }
