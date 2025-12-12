@@ -65,6 +65,11 @@ export class AppMenu {
                                 routerLink: ['/apps/finance/planned-payments/'],
                             },
                             {
+                                label: 'Buckets',
+                                icon: 'pi pi-fw pi-shopping-cart',
+                                routerLink: ['/apps/finance/buckets/'],
+                            },
+                            {
                                 label: 'Settings',
                                 icon: 'pi pi-fw pi-wallet',
                                 items: [

@@ -17,6 +17,11 @@ export default [
         data: { breadcrumb: 'Planned Payments' }
     },
     {
+        path: 'buckets',
+        loadChildren: () => import('./finance-buckets/finance-buckets.routes'),
+        data: { breadcrumb: 'Bucket' }
+    },
+    {
         path: 'settings',
         loadChildren: () => import('./settings/settings.routes'),
         data: { breadcrumb: 'Settings' }
