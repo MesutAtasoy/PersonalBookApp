@@ -295,7 +295,7 @@ interface TransactionFilterModel {
         </p-dialog>
 
         <p-dialog
-            header="Transaction Detail: {{ selectedTransaction?.transactionNumber }}"
+            header="Transaction Detail: {{ selectedTransaction.transactionNumber }}"
             [(visible)]="displayDetailModal"
             [modal]="true"
             [style]="{width: '50vw'}"

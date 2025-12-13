@@ -20,7 +20,11 @@ import {
     FinanceTransactionType,
     FinanceTransactionTypeDto
 } from "@/apps/finance/finance.types";
-import {RecurrenceDialogComponent} from "@/apps/finance/planned-payments/recurrence-dialog.component";
+import {
+    CalendarRecurrenceComponent,
+} from "@/apps/finance/planned-payments/recurrence-dialog.component";
+import {DialogService, DynamicDialogRef} from "primeng/dynamicdialog";
+import moment from "moment";
 
 interface RRuleForm {
     freq: Frequency;
@@ -34,7 +38,7 @@ interface RRuleForm {
 @Component({
     selector: 'app-add-installment-plan',
     standalone: true,
-    providers: [MessageService],
+    providers: [MessageService, DialogService],
     imports: [
         CommonModule,
         FormsModule,
@@ -48,7 +52,7 @@ interface RRuleForm {
         DialogModule,
         SkeletonModule,
         ToastModule,
-        RecurrenceDialogComponent,
+        CalendarRecurrenceComponent,
     ],
     template: `
         <div class="card p-4">
@@ -214,7 +218,8 @@ interface RRuleForm {
 
                 <div class="mb-6">
                     <label for="note" class="block text-sm font-medium mb-1">Note</label>
-                    <textarea id="note" pInputTextarea [(ngModel)]="formModel.note" name="note" rows="3"></textarea>
+                    <textarea id="note"  class="w-full"
+                              pInputTextarea [(ngModel)]="formModel.note" name="note" rows="3"></textarea>
                 </div>
 
                 <p-button
@@ -224,23 +229,17 @@ interface RRuleForm {
                     (onClick)="savePlan()">
                 </p-button>
             </form>
-
-            <app-recurrence-dialog
-                [visible]="showRecurrenceModal"
-                [currentRecurrenceRule]="formModel.recurrenceRule"
-                [eventStartDate]="formModel.startDate"
-                (rruleApplied)="onRruleApplied($event)"
-                (onClose)="showRecurrenceModal = false">
-            </app-recurrence-dialog>
-
         </div>
-    `
+    `,
+
+
 })
 export class CreateInstallmentPlanComponent implements OnInit {
 
     constructor(
         private _financeService: PersonalFinanceService,
-        private messageService: MessageService
+        private messageService: MessageService,
+        private dialogService: DialogService
     ) {}
 
     // --- Service Data ---
@@ -288,6 +287,7 @@ export class CreateInstallmentPlanComponent implements OnInit {
         freq: Frequency.MONTHLY, interval: 1, countOrUntil: 'count', count: 12, until: null,
     };
 
+    ref!: DynamicDialogRef<any> | null;
 
 
     // --- Initialization & Data Loading (Unchanged logic) ---
@@ -369,82 +369,42 @@ export class CreateInstallmentPlanComponent implements OnInit {
     }
 
     // --- RRULE Logic (Unchanged logic) ---
-    openRruleModal(): void {
-        this.showRecurrenceModal = true;
-        if (this.formModel.recurrenceRule) {
-            try {
-                const rule = RRule.fromString(this.formModel.recurrenceRule);
-                this.rruleForm.freq = rule.options.freq;
-                this.rruleForm.interval = rule.options.interval || 1;
+        openRruleModal(): void {
 
-                if (rule.options.count) {
-                    this.rruleForm.countOrUntil = 'count';
-                    this.rruleForm.count = rule.options.count;
-                    this.rruleForm.until = null;
-                } else if (rule.options.until) {
-                    this.rruleForm.countOrUntil = 'until';
-                    this.rruleForm.until = rule.options.until;
-                    this.rruleForm.count = null;
-                }
-            } catch (e) {
-                console.warn("Could not parse existing RRULE, form is reset to default.");
-            }
-        }
-    }
-
-    isRruleFormValid(): boolean {
-        if (this.rruleForm.interval < 1) return false;
-        if (this.rruleForm.countOrUntil === 'count' && (!this.rruleForm.count || this.rruleForm.count < 1)) return false;
-        if (this.rruleForm.countOrUntil === 'until' && !this.rruleForm.until) return false;
-        return true;
-    }
-
-    previewRrule(): string {
-        try {
-            if (!this.formModel.startDate) return 'Start Date is required.';
-
-            const options: any = {
-                freq: this.rruleForm.freq,
-                interval: this.rruleForm.interval,
-                dtstart: this.formModel.startDate,
-                ...(this.rruleForm.countOrUntil === 'count' && this.rruleForm.count ? { count: this.rruleForm.count } : {}),
-                ...(this.rruleForm.countOrUntil === 'until' && this.rruleForm.until ? { until: this.rruleForm.until } : {}),
+            const eventData = {
+                // This is the data originally passed via MAT_DIALOG_DATA, now DynamicDialogConfig
+                event: {
+                    start: this.formModel.startDate,
+                    recurrence: this.formModel.recurrenceRule
+                },
+                // Assuming the weekdays array is fetched elsewhere or provided
+                weekdays: [
+                    { abbr: 'Su', label: 'Sunday', value: 'SU' },
+                    { abbr: 'Mo', label: 'Monday', value: 'MO' },
+                    // ... all 7 days
+                ]
             };
 
-            const rule = new RRule(options);
-            return rule.toString();
+            // 2. Open the dynamic dialog using the DialogService
+            this.ref = this.dialogService.open(CalendarRecurrenceComponent, {
+                header: 'Recurrence Rule Setup',
+                width: '400px', // Set appropriate size
+                // Pass the data using 'data' property
+                data: eventData
+            });
 
-        } catch (e) {
-            return 'Invalid RRULE configuration.';
-        }
-    }
+            // 3. Subscribe to the dialog close event to get the result
+            this.ref?.onClose.subscribe((result: any) => {
+                if (result && result.recurrence === 'cleared') {
+                    this.formModel.recurrenceRule = null;
+                }
+                else if (result && result.recurrence) {
+                    this.formModel.recurrenceRule = result.recurrence;
+                }
 
-    applyRrule(): void {
-        if (!this.isRruleFormValid() || !this.formModel.startDate) return;
+                this._updateEndValue();
+            });
 
-        const options: any = {
-            freq: this.rruleForm.freq,
-            interval: this.rruleForm.interval,
-            dtstart: this.formModel.startDate,
-            ...(this.rruleForm.countOrUntil === 'count' && this.rruleForm.count ? { count: this.rruleForm.count } : {}),
-            ...(this.rruleForm.countOrUntil === 'until' && this.rruleForm.until ? { until: this.rruleForm.until } : {}),
-        };
-
-        const rule = new RRule(options);
-        this.formModel.recurrenceRule = rule.toString();
-        this.showRecurrenceModal = false;
-    }
-
-    clearRrule(): void {
-        this.formModel.recurrenceRule = null;
-        this.showRecurrenceModal = false;
-        this.rruleForm = {
-            freq: Frequency.MONTHLY,
-            interval: 1,
-            countOrUntil: 'count',
-            count: 12,
-            until: null,
-        };
     }
 
     // --- Form Submission (Updated Payload) ---
@@ -468,6 +428,7 @@ export class CreateInstallmentPlanComponent implements OnInit {
             recurrenceRule: this.formModel.recurrenceRule,
             account: this.formModel.accountId ? this.accounts.find(x => x.id == this.formModel.accountId) : null,
             category: this.formModel.categoryId ? this.filteredCategories.find(x => x.id == this.formModel.categoryId) : null,
+            end: this.formModel.end
         };
 
         // 2. Call the Service
@@ -536,5 +497,50 @@ export class CreateInstallmentPlanComponent implements OnInit {
     onRruleApplied(rule: string | null): void {
         this.formModel.recurrenceRule = rule;
         // The child component handles closing itself or we use the (onClose) binding in the template.
+    }
+
+    private _updateEndValue(): void {
+        // Get the event recurrence
+        const recurrence = this.formModel.recurrenceRule as string;
+
+        // Return if this is a non-recurring event
+        if (!recurrence) {
+            return;
+        }
+
+        // Parse the recurrence rule
+        const parsedRules: any = {};
+        recurrence.split(';').forEach((rule) => {
+
+            // Split the rule
+            const parsedRule = rule.split('=');
+
+            // Add the rule to the parsed rules
+            parsedRules[parsedRule[0]] = parsedRule[1];
+        });
+
+        // If there is an UNTIL rule...
+        if (parsedRules['UNTIL']) {
+            // Use that to set the end date
+            this.formModel.end = parsedRules['UNTIL'];
+            // Return
+            return;
+        }
+
+        // If there is a COUNT rule...
+        if (parsedRules['COUNT']) {
+            // Generate the RRule string
+            const rrule = 'DTSTART=' + moment(this.formModel.startDate.value).utc().format('YYYYMMDD[T]HHmmss[Z]') + '\nRRULE:' + recurrence;
+
+            // Use RRule string to generate dates
+            const dates = RRule.fromString(rrule).all();
+
+            // Get the last date from dates array and set that as the end date
+            this.formModel.end = moment(dates[dates.length - 1]).toISOString();
+
+            // Return
+            return;
+        }
+        this.formModel.end = moment().year(9999).endOf('year').toISOString();
     }
 }

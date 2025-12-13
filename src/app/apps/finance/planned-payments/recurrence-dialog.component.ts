@@ -1,452 +1,525 @@
-import { CommonModule } from '@angular/common';
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { SelectModule } from 'primeng/select';
-import { DialogModule } from 'primeng/dialog';
-
-import { RRule, Frequency } from 'rrule'
-import {DatePickerModule} from "primeng/datepicker";
+import { Component, Inject, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {DialogService, DynamicDialogRef} from 'primeng/dynamicdialog';
+import { DynamicDialogConfig } from 'primeng/dynamicdialog';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import moment from "moment";
+import {InputNumber} from "primeng/inputnumber";
+import {Select} from "primeng/select";
+import {SelectButton} from "primeng/selectbutton";
+import {DatePicker} from "primeng/datepicker";
+import {Button} from "primeng/button";
+import {NgIf} from "@angular/common";
 
-interface RRuleForm {
-    freq: Frequency;
-    interval: number;
-    weekly: {
-        byDay: string[]; // e.g., ['MO', 'WE']
-    };
-    monthly: {
-        repeatOn: 'date' | 'nthWeekday';
-        date: number | null;
-        nthWeekday: string | null; // e.g., '2TU'
-    };
-    end: {
-        type: 'never' | 'until' | 'count';
-        until: Date | null;
-        count: number | null;
-    };
-}
-
-// Weekday config to match your original
-interface CalendarWeekday {
-    label: string;
-    abbr: string;
-    value: string; // e.g., 'MO'
-}
 
 @Component({
-    selector: 'app-recurrence-dialog',
+    selector: 'calendar-recurrence',
+    template: `
+        <form
+            class="row w-full p-6"
+            [formGroup]="recurrenceForm">
+
+            <div class="row">
+                <div class="col-12">
+                    <label for="interval-input" class="p-sr-only">Repeat every</label>
+                    <span class="p-float-label">
+                        <p-inputNumber
+                            inputId="interval-input"
+                            mode="decimal"
+                            [showButtons]="true"
+                            [min]="1"
+                            formControlName="interval"
+                            autocomplete="off">
+                        </p-inputNumber>
+                    </span>
+                </div>
+
+                <div class="col-12 mt-4">
+                    <label for="freq-select" class="p-sr-only block">Frequency</label>
+                    <p-select
+                        inputId="freq-select"
+                        [options]="frequencyOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        formControlName="freq">
+                    </p-select>
+                </div>
+            </div>
+
+            <div
+                class="flex flex-col mt-6"
+                formGroupName="weekly"
+                *ngIf="recurrenceForm.get('freq')?.value === 'WEEKLY'">
+                <div class="font-medium mb-2">Repeat on</div>
+                <p-selectButton
+                    [options]="weekdaySelectOptions"
+                    optionLabel="abbr"
+                    optionValue="value"
+                    formControlName="byDay"
+                    [multiple]="true">
+                </p-selectButton>
+            </div>
+
+            <div
+                class="row mt-6"
+                formGroupName="monthly"
+                *ngIf="recurrenceForm.get('freq')?.value === 'MONTHLY'">
+                <div class="p-field w-full">
+                    <label for="repeatOn-select" class="p-sr-only mr-4">Repeat on</label>
+                    <p-select
+                        inputId="repeatOn-select"
+                        [options]="monthlyRepeatOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        formControlName="repeatOn"
+                        appendTo="body">
+                    </p-select>
+                </div>
+            </div>
+
+            <div
+                class="row  mt-4"
+                formGroupName="end">
+                <div class="col-12 mt-4">
+                    <div class="p-field">
+                        <label for="end-type-select" class="p-sr-only mr-4">Ends</label>
+                        <span class="p-float-label">
+                            <p-select
+                                inputId="end-type-select"
+                                [options]="endTypeOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                formControlName="type"
+                                appendTo="body">
+                            </p-select>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-12 mt-4">
+                    <div
+                        class="p-field ml-4"
+                        *ngIf="recurrenceForm.get('end.type')?.value === 'until'">
+                        <p-date-picker
+                            formControlName="until"
+                            [showIcon]="true"
+                            [appendTo]="'body'"
+                            dateFormat="yy/mm/dd">
+                        </p-date-picker>
+                    </div>
+
+                    <div
+                        class="p-field w-40 ml-4 flex items-center"
+                        *ngIf="recurrenceForm.get('end.type')?.value === 'count'">
+                        <label for="count-input" class="p-sr-only">Count</label>
+                        <p-inputNumber
+                            inputId="count-input"
+                            mode="decimal"
+                            [showButtons]="true"
+                            [min]="1"
+                            formControlName="count"
+                            autocomplete="off"
+                            class="flex-grow">
+                        </p-inputNumber>
+                        <span class="ml-2">occurrence(s)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ml-auto mt-8 space-x-2">
+                <p-button
+                    label="Clear"
+                    styleClass="p-button-text"
+                    (onClick)="clear()">
+                </p-button>
+                <p-button
+                    label="Done"
+                    [disabled]="recurrenceForm.invalid"
+                    (onClick)="done()">
+                </p-button>
+            </div>
+        </form>
+    `,
     standalone: true,
     imports: [
-        CommonModule,
-        FormsModule,
         ReactiveFormsModule,
-        ButtonModule,
-        InputNumberModule,
-        SelectModule,
-        DialogModule,
-        DatePickerModule,
+        InputNumber,
+        Select,
+        SelectButton,
+        DatePicker,
+        Button,
+        NgIf
     ],
-    template: `
-    <p-dialog
-      header="Recurrence rules"
-      [(visible)]="visible"
-      [modal]="true"
-      [style]="{ width: '50rem' }" [breakpoints]="{ '1199px': '75vw', '575px': '90vw' }"
-      (onHide)="onClose.emit()" >
-
-      <!-- Interval and frequency -->
-      <div class="flex mt-4 items-end">
-        <div class="mr-4">
-          <label class="text-sm font-medium block mb-1">Repeat every</label>
-          <p-inputNumber
-            [ngModel]="recurrenceForm.interval"
-            (ngModelChange)="updateForm('interval', $event)"
-            [min]="1"
-            [showButtons]="true"
-            inputStyleClass="w-20"
-            styleClass="w-20">
-          </p-inputNumber>
-        </div>
-
-        <div>
-          <label class="text-sm font-medium block mb-1">&nbsp;</label>
-          <p-select
-            [ngModel]="recurrenceForm.freq"
-            (ngModelChange)="onFreqChange($event)"
-            [options]="freqOptions"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="w-36">
-          </p-select>
-        </div>
-      </div>
-
-      <!-- Weekly repeat options -->
-      <div class="mt-6" *ngIf="recurrenceForm.freq === 1">
-        <div class="font-medium mb-2">Repeat on</div>
-        <div class="flex space-x-2">
-          <ng-container *ngFor="let weekday of weekdays">
-            <p-button
-              [text]="true"
-              [rounded]="true"
-              [outlined]="!isDaySelected(weekday.value)"
-              [raised]="isDaySelected(weekday.value)"
-              [styleClass]="isDaySelected(weekday.value) ? 'bg-primary text-white shadow-none' : 'border border-surface-300'"
-              (onClick)="toggleWeeklyDay(weekday.value)"
-              tooltipPosition="top">
-              {{ weekday.abbr }}
-            </p-button>
-          </ng-container>
-        </div>
-      </div>
-
-      <!-- Monthly repeat options -->
-      <div class="mt-6" *ngIf="recurrenceForm.freq === 2">
-        <p-select
-          [ngModel]="recurrenceForm.monthly.repeatOn"
-          (ngModelChange)="updateMonthlyRepeatOn($event)"
-          [options]="monthlyOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Repeat on"
-          styleClass="w-full">
-        </p-select>
-        <small class="text-sm text-surface-500 mt-1 block">
-          <ng-container *ngIf="recurrenceForm.monthly.repeatOn === 'date'">
-            Monthly on day {{ recurrenceForm.monthly.date }}
-          </ng-container>
-          <ng-container *ngIf="recurrenceForm.monthly.repeatOn === 'nthWeekday'">
-            {{ nthWeekdayText }}
-          </ng-container>
-        </small>
-      </div>
-
-      <!-- Ends -->
-      <div class="mt-8">
-        <div class="flex items-end">
-          <div>
-            <label class="text-sm font-medium block mb-1">Ends</label>
-            <p-select
-              [ngModel]="recurrenceForm.end.type"
-              (ngModelChange)="updateEndType($event)"
-              [options]="endOptions"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="w-32">
-            </p-select>
-          </div>
-
-          <div class="ml-4" *ngIf="recurrenceForm.end.type === 'until'">
-            <p-date-picker
-              [ngModel]="recurrenceForm.end.until"
-              (ngModelChange)="updateForm('end.until', $event)"
-              [showIcon]="true"
-              dateFormat="yy/mm/dd"
-              inputStyleClass="w-36"
-              styleClass="w-36">
-            </p-date-picker>
-          </div>
-
-          <div class="ml-4" *ngIf="recurrenceForm.end.type === 'count'">
-            <p-inputNumber
-              [ngModel]="recurrenceForm.end.count"
-              (ngModelChange)="updateForm('end.count', $event)"
-              [min]="1"
-              [showButtons]="true"
-              inputStyleClass="w-32"
-              styleClass="w-32">
-              <ng-template pTemplate="suffix">
-                <span class="ml-2 text-surface-600 text-sm">occurrence(s)</span>
-              </ng-template>
-            </p-inputNumber>
-          </div>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <ng-template pTemplate="footer">
-        <div class="flex justify-end gap-2">
-          <p-button
-            label="Clear"
-            severity="secondary"
-            (onClick)="clear()">
-          </p-button>
-          <p-button
-            label="Done"
-            [disabled]="!isFormValid()"
-            (onClick)="done()">
-          </p-button>
-        </div>
-      </ng-template>
-    </p-dialog>
-  `,
-    styles: [`
-    ::ng-deep .p-button.p-button-outlined {
-      background-color: transparent !important;
-    }
-    ::ng-deep .p-button.rounded {
-      width: 2.5rem;
-      height: 2.5rem;
-      padding: 0;
-      font-weight: 600;
-    }
-  `]
+    encapsulation: ViewEncapsulation.None,
+    providers: [DialogService]
 })
-export class RecurrenceDialogComponent implements OnInit, OnChanges {
-    @Input() visible: boolean = false;
-    @Input() currentRecurrenceRule: string | null = null;
-    @Input() eventStartDate: Date | null = null;
+export class CalendarRecurrenceComponent implements OnInit, OnDestroy
+{
+    nthWeekdayText!: string;
+    recurrenceForm!: FormGroup;
+    recurrenceFormValues: any;
+    weekdays!: CalendarWeekday[];
+    private _unsubscribeAll: Subject<any> = new Subject<any>();
 
-    @Output() rruleApplied = new EventEmitter<string | null>();
-    @Output() onClose = new EventEmitter<void>();
+    // PrimeNG Dropdown/Select Options
+    frequencyOptions: { label: string, value: string }[];
+    endTypeOptions: { label: string, value: string }[];
+    weekdaySelectOptions: { abbr: string, value: string, label: string }[];
+    monthlyRepeatOptions: { label: string, value: string }[];
 
-    recurrenceForm: RRuleForm = {
-        freq: Frequency.DAILY,
-        interval: 1,
-        weekly: { byDay: [] },
-        monthly: { repeatOn: 'date', date: 1, nthWeekday: null },
-        end: { type: 'never', until: null, count: null }
-    };
 
-    nthWeekdayText: string = '';
-    weekdays: CalendarWeekday[] = [
-        { label: 'Monday', abbr: 'M', value: 'MO' },
-        { label: 'Tuesday', abbr: 'T', value: 'TU' },
-        { label: 'Wednesday', abbr: 'W', value: 'WE' },
-        { label: 'Thursday', abbr: 'T', value: 'TH' },
-        { label: 'Friday', abbr: 'F', value: 'FR' },
-        { label: 'Saturday', abbr: 'S', value: 'SA' },
-        { label: 'Sunday', abbr: 'S', value: 'SU' }
-    ];
+    /**
+     * Constructor
+     */
+    constructor(
+        @Inject(DynamicDialogConfig) public config: DynamicDialogConfig,
+        public dialogRef: DynamicDialogRef,
+        private _formBuilder: FormBuilder
+    )
+    {
+        // Initialize PrimeNG dropdown options
+        this.frequencyOptions = [
+            { label: 'day(s)', value: 'DAILY' },
+            { label: 'week(s)', value: 'WEEKLY' },
+            { label: 'month(s)', value: 'MONTHLY' },
+            { label: 'year(s)', value: 'YEARLY' }
+        ];
 
-    freqOptions = [
-        { label: 'day(s)', value: Frequency.DAILY },
-        { label: 'week(s)', value: Frequency.WEEKLY },
-        { label: 'month(s)', value: Frequency.MONTHLY },
-        { label: 'year(s)', value: Frequency.YEARLY }
-    ];
+        this.endTypeOptions = [
+            { label: 'Never', value: 'never' },
+            { label: 'On', value: 'until' },
+            { label: 'After', value: 'count' }
+        ];
 
-    monthlyOptions = [
-        { label: 'Day of month', value: 'date' },
-        { label: 'Nth weekday', value: 'nthWeekday' }
-    ];
-
-    endOptions = [
-        { label: 'Never', value: 'never' },
-        { label: 'On', value: 'until' },
-        { label: 'After', value: 'count' }
-    ];
-
-    ngOnInit(): void {
-        this.initializeForm();
+        this.weekdaySelectOptions = [];
+        this.monthlyRepeatOptions = [];
     }
 
-    ngOnChanges(changes: SimpleChanges): void {
-        if (changes['visible'] && this.visible) {
-            this.initializeForm();
+    // -----------------------------------------------------------------------------------------------------
+    // @ Lifecycle hooks
+    // -----------------------------------------------------------------------------------------------------
+
+    /**
+     * On init
+     */
+    ngOnInit(): void
+    {
+        // Get weekdays
+        this.weekdays = weekdays;
+        // Prepare PrimeNG SelectButton options
+        this.weekdaySelectOptions = weekdays.map(day => ({
+            abbr: day.abbr,
+            value: day.value,
+            label: day.label
+        }));
+
+        // Initialize with event data (config.data is the replacement for data)
+        this._init();
+
+        // Prepare monthly repeat options after _init calculates dynamic texts
+        this.monthlyRepeatOptions = [
+            { label: `Monthly on day ${this.recurrenceFormValues.monthly.date}`, value: 'date' },
+            { label: `Monthly on the ${this.nthWeekdayText}`, value: 'nthWeekday' }
+        ];
+
+        // Create the recurrence form
+        this.recurrenceForm = this._formBuilder.group({
+            freq    : [null],
+            interval: [null, Validators.required],
+            weekly  : this._formBuilder.group({
+                byDay: [[]]
+            }),
+            monthly : this._formBuilder.group({
+                repeatOn  : [null], // date | nthWeekday
+                date      : [null],
+                nthWeekday: [null]
+            }),
+            end     : this._formBuilder.group({
+                type : [null], // never | until | count
+                until: [null],
+                count: [null]
+            })
+        });
+
+        // Subscribe to 'freq' field value changes
+        this.recurrenceForm.get('freq')?.valueChanges.pipe(takeUntil(this._unsubscribeAll)).subscribe((value) => {
+            this._setEndValues(value);
+        });
+
+        // Subscribe to 'weekly.byDay' field value changes
+        this.recurrenceForm.get('weekly.byDay')?.valueChanges.pipe(takeUntil(this._unsubscribeAll)).subscribe((value) => {
+
+            // Get the event's start date
+            const startDate = moment(this.config.data.event.start);
+
+            if ( !value || !value.length )
+            {
+                // Get the day of event start date
+                const eventStartDay = startDate.format('dd').toUpperCase();
+
+                // Set the original value back without emitting a change event
+                this.recurrenceForm.get('weekly.byDay')?.setValue([eventStartDay], {emitEvent: false});
+            }
+        });
+
+        // PrimeNG Calendar uses Date objects, so convert the ISO string in recurrenceFormValues
+        if (this.recurrenceFormValues.end.until) {
+            this.recurrenceFormValues.end.until = moment.utc(this.recurrenceFormValues.end.until).toDate();
         }
+
+        // Patch the form with the values
+        this.recurrenceForm.patchValue(this.recurrenceFormValues);
+
+        // Set end values for the first time
+        this._setEndValues(this.recurrenceForm.get('freq')?.value);
     }
 
-    private initializeForm(): void {
-        const start = this.eventStartDate ? moment(this.eventStartDate) : moment();
-        const dayOfMonth = start.date();
-        const weekdayAbbr = start.format('dd').toUpperCase().substring(0, 2); // e.g., TU
+    /**
+     * On destroy
+     */
+    ngOnDestroy(): void
+    {
+        this._unsubscribeAll.complete();
+        this.dialogRef.close();
+    }
 
-        // Compute nthWeekday (e.g., '2TU')
-        let nth = Math.ceil(dayOfMonth / 7);
-        if (nth > 4) nth = -1; // last week
-        const nthWeekday = (nth === -1 ? 'L' : nth.toString()) + weekdayAbbr;
+    // -----------------------------------------------------------------------------------------------------
+    // @ Public methods
+    // -----------------------------------------------------------------------------------------------------
 
-        // Map nth to readable text
-        const ordinals: Record<string, string> = { '1': 'st', '2': 'nd', '3': 'rd', '4': 'th', 'L': 'last' };
-        const weekdayLabel = this.weekdays.find(w => w.value === weekdayAbbr)?.label || 'Day';
-        this.nthWeekdayText = (nth === -1 ? 'Last' : nth + ordinals[nth.toString()]) + ' ' + weekdayLabel;
+    /**
+     * Clear
+     */
+    clear(): void
+    {
+        // Close the dialog using PrimeNG DynamicDialogRef
+        this.dialogRef.close({recurrence: 'cleared'});
+    }
 
-        // Set defaults
-        this.recurrenceForm = {
-            freq: Frequency.DAILY,
+    /**
+     * Done
+     */
+    done(): void
+    {
+        // Get the recurrence form values
+        const recurrenceForm = this.recurrenceForm.value;
+
+        // Prepare the rule array and add the base rules
+        const ruleArr = ['FREQ=' + recurrenceForm.freq, 'INTERVAL=' + recurrenceForm.interval];
+
+        // If monthly on certain days...
+        if ( recurrenceForm.freq === 'MONTHLY' && recurrenceForm.monthly.repeatOn === 'nthWeekday' )
+        {
+            ruleArr.push('BYDAY=' + recurrenceForm.monthly.nthWeekday);
+        }
+
+        // If weekly...
+        if ( recurrenceForm.freq === 'WEEKLY' )
+        {
+            // PrimeNG selectButton returns an array
+            if ( Array.isArray(recurrenceForm.weekly.byDay) )
+            {
+                ruleArr.push('BYDAY=' + recurrenceForm.weekly.byDay.join(','));
+            }
+            else
+            {
+                ruleArr.push('BYDAY=' + recurrenceForm.weekly.byDay);
+            }
+        }
+
+        // If one of the end options is selected...
+        if ( recurrenceForm.end.type === 'until' )
+        {
+            // Convert Date object from PrimeNG Calendar to the required UTC ISO string format.
+            const untilDate = moment(recurrenceForm.end.until).endOf('day').utc().format('YYYYMMDD[T]HHmmss[Z]');
+            ruleArr.push('UNTIL=' + untilDate);
+        }
+
+        if ( recurrenceForm.end.type === 'count' )
+        {
+            ruleArr.push('COUNT=' + recurrenceForm.end.count);
+        }
+
+        // Generate rule text
+        const ruleText = ruleArr.join(';');
+
+        // Close the dialog
+        this.dialogRef.close({recurrence: ruleText});
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+    // @ Private methods
+    // -----------------------------------------------------------------------------------------------------
+
+    /**
+     * Initialize
+     *
+     * @private
+     */
+    private _init(): void
+    {
+        if (this.config.data.weekdays) {
+            this.weekdays = this.config.data.weekdays
+        }
+
+        // Get the event's start date
+        const startDate = moment(this.config.data.event.start);
+
+        // Calculate the weekday (e.g., MO, TU)
+        const weekday = startDate.format('dd').toUpperCase();
+
+        // Calculate the nthWeekday (e.g., 1MO, 2TU, etc.)
+        const nthWeekday = (Math.ceil(startDate.date() / 7)) + weekday;
+
+
+        // Calculate the nthWeekday as display text (e.g., "1st Monday")
+        const ordinalNumberSuffixes : any = {
+            1: 'st',
+            2: 'nd',
+            3: 'rd',
+            4: 'th',
+            5: 'th'
+        };
+        const n = nthWeekday.slice(0, 1);
+        const dayAbbr = nthWeekday.slice(-2);
+        const dayLabel = this.weekdays.find(item => item.value === dayAbbr)?.label || dayAbbr;
+
+        this.nthWeekdayText = n + (ordinalNumberSuffixes[n] || 'th') + ' ' + dayLabel;
+
+        // Set the defaults on recurrence form values
+        this.recurrenceFormValues = {
+            freq    : 'DAILY',
             interval: 1,
-            weekly: { byDay: [weekdayAbbr] },
-            monthly: { repeatOn: 'date', date: dayOfMonth, nthWeekday: nthWeekday },
-            end: { type: 'never', until: null, count: null }
+            weekly  : {
+                byDay: [weekday]
+            },
+            monthly : {
+                repeatOn  : 'date',
+                date      : startDate.date(),
+                nthWeekday: nthWeekday
+            },
+            end     : {
+                type : 'never',
+                until: null,
+                count: null
+            }
         };
 
-        // Parse existing rule
-        if (this.currentRecurrenceRule) {
-            this.parseRRule(this.currentRecurrenceRule);
-        }
+        // If recurrence rule string is available on the event...
+        if ( this.config.data.event.recurrence )
+        {
+            // Parse the rules
+            const parsedRules: any = {};
+            this.config.data.event.recurrence.split(';').forEach((rule: string) => {
+                parsedRules[rule.split('=')[0]] = rule.split('=')[1];
+            });
 
-        this.setEndDefaults();
-    }
+            // Overwrite the recurrence form values
+            this.recurrenceFormValues.freq = parsedRules.FREQ;
+            this.recurrenceFormValues.interval = parseInt(parsedRules.INTERVAL, 10);
 
-    private parseRRule(rruleStr: string): void {
-        try {
-            const rule = RRule.fromString(rruleStr);
-            this.recurrenceForm.freq = rule.options.freq;
-            this.recurrenceForm.interval = rule.options.interval || 1;
-
-            // Weekly
-            if (rule.options.byweekday) {
-                this.recurrenceForm.weekly.byDay = (Array.isArray(rule.options.byweekday)
-                        ? rule.options.byweekday
-                        : [rule.options.byweekday]
-                ).map(w => w.toString());
+            if ( parsedRules.FREQ === 'WEEKLY' && parsedRules.BYDAY)
+            {
+                this.recurrenceFormValues.weekly.byDay = parsedRules.BYDAY.split(',');
             }
 
-            // Monthly
-            if (rule.options.freq === Frequency.MONTHLY) {
-                if (rule.options.bymonthday && rule.options.bymonthday.length > 0) {
-                    this.recurrenceForm.monthly.repeatOn = 'date';
-                    this.recurrenceForm.monthly.date = rule.options.bymonthday[0];
-                } else if (rule.options.bysetpos && rule.options.byweekday) {
-                    this.recurrenceForm.monthly.repeatOn = 'nthWeekday';
-                    const pos = Array.isArray(rule.options.bysetpos) ? rule.options.bysetpos[0] : rule.options.bysetpos;
-                    const day = Array.isArray(rule.options.byweekday) ? rule.options.byweekday[0] : rule.options.byweekday;
-                    const posStr = pos === -1 ? 'L' : pos.toString();
-                    this.recurrenceForm.monthly.nthWeekday = posStr + day.toString();
-                    // Recompute text
-                    const label = this.weekdays.find(w => w.value === day.toString())?.label || 'Day';
-                    this.nthWeekdayText = (pos === -1 ? 'Last' : pos + (pos === 1 ? 'st' : pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th')) + ' ' + label;
-                }
+            if ( parsedRules.FREQ === 'MONTHLY' )
+            {
+                this.recurrenceFormValues.monthly.repeatOn = parsedRules.BYDAY ? 'nthWeekday' : 'date';
             }
 
-            // End
-            if (rule.options.count) {
-                this.recurrenceForm.end.type = 'count';
-                this.recurrenceForm.end.count = rule.options.count;
-            } else if (rule.options.until) {
-                this.recurrenceForm.end.type = 'until';
-                this.recurrenceForm.end.until = rule.options.until;
-            } else {
-                this.recurrenceForm.end.type = 'never';
-            }
-        } catch (e) {
-            console.warn('Failed to parse RRULE', e);
+            this.recurrenceFormValues.end.type = parsedRules.UNTIL ? 'until' : (parsedRules.COUNT ? 'count' : 'never');
+            // Store the raw ISO string for later conversion to Date object
+            this.recurrenceFormValues.end.until = parsedRules.UNTIL ? moment.utc(parsedRules.UNTIL).toISOString() : null;
+            this.recurrenceFormValues.end.count = parsedRules.COUNT ? parseInt(parsedRules.COUNT, 10) : null;
         }
     }
 
-    private setEndDefaults(): void {
-        if (!this.eventStartDate) return;
-        const start = moment(this.eventStartDate);
-        const freq = this.recurrenceForm.freq;
-
-        if (this.recurrenceForm.end.type !== 'until') {
-            let until = start.clone().add(
-                freq === Frequency.DAILY ? 1 : (freq === Frequency.YEARLY ? 5 : 12),
-                freq === Frequency.DAILY ? 'months' :
-                    freq === Frequency.WEEKLY ? 'weeks' :
-                        freq === Frequency.MONTHLY ? 'months' : 'years'
-            );
-            this.recurrenceForm.end.until = until.toDate();
-        }
-
-        if (this.recurrenceForm.end.type !== 'count') {
-            this.recurrenceForm.end.count = freq === Frequency.DAILY ? 30 :
-                (freq === Frequency.YEARLY ? 5 : 12);
-        }
-    }
-
-    onFreqChange(value: Frequency): void {
-        this.recurrenceForm.freq = value;
-        this.setEndDefaults();
-    }
-
-    updateMonthlyRepeatOn(value: 'date' | 'nthWeekday'): void {
-        this.recurrenceForm.monthly.repeatOn = value;
-    }
-
-    updateEndType(value: 'never' | 'until' | 'count'): void {
-        this.recurrenceForm.end.type = value;
-        this.setEndDefaults();
-    }
-
-    updateForm(path: string, value: any): void {
-        const keys = path.split('.');
-        let obj = this.recurrenceForm as any;
-        for (let i = 0; i < keys.length - 1; i++) {
-            obj = obj[keys[i]];
-        }
-        obj[keys[keys.length - 1]] = value;
-    }
-
-    isDaySelected(value: string): boolean {
-        return this.recurrenceForm.weekly.byDay.includes(value);
-    }
-
-    toggleWeeklyDay(value: string): void {
-        const days = this.recurrenceForm.weekly.byDay;
-        const idx = days.indexOf(value);
-        if (idx >= 0) {
-            days.splice(idx, 1);
-        } else {
-            days.push(value);
-        }
-        // Ensure at least one day is selected
-        if (days.length === 0 && this.eventStartDate) {
-            const fallback = moment(this.eventStartDate).format('dd').toUpperCase().substring(0, 2);
-            this.recurrenceForm.weekly.byDay = [fallback];
-        }
-    }
-
-    isFormValid(): boolean {
-        if (this.recurrenceForm.interval < 1) return false;
-        if (this.recurrenceForm.freq === Frequency.WEEKLY && this.recurrenceForm.weekly.byDay.length === 0) return false;
-        if (this.recurrenceForm.end.type === 'count' && (!this.recurrenceForm.end.count || this.recurrenceForm.end.count < 1)) return false;
-        if (this.recurrenceForm.end.type === 'until' && !this.recurrenceForm.end.until) return false;
-        return true;
-    }
-
-    clear(): void {
-        this.rruleApplied.emit(null);
-        this.onClose.emit();
-    }
-
-    done(): void {
-        if (!this.isFormValid() || !this.eventStartDate) return;
-
-        if (this.recurrenceForm.end.type === 'never') {
-            this.rruleApplied.emit(null);
-            this.onClose.emit();
+    /**
+     * Set the end value based on frequency
+     *
+     * @param freq
+     * @private
+     */
+    private _setEndValues(freq: string): void
+    {
+        if ( !freq )
+        {
             return;
         }
 
-        const ruleArr = [
-            `FREQ=${Frequency[this.recurrenceForm.freq]}`,
-            `INTERVAL=${this.recurrenceForm.interval}`
-        ];
+        const startDate = moment(this.config.data.event.start);
+        const endType = this.recurrenceForm.get('end.type')?.value;
 
-        // Weekly
-        if (this.recurrenceForm.freq === Frequency.WEEKLY && this.recurrenceForm.weekly.byDay.length) {
-            ruleArr.push(`BYDAY=${this.recurrenceForm.weekly.byDay.join(',')}`);
-        }
+        // Set default 'until' date
+        if ( endType !== 'until' )
+        {
+            let untilMoment;
 
-        // Monthly nth weekday
-        if (this.recurrenceForm.freq === Frequency.MONTHLY && this.recurrenceForm.monthly.repeatOn === 'nthWeekday') {
-            ruleArr.push(`BYDAY=${this.recurrenceForm.monthly.nthWeekday?.substring(1)}`);
-            const pos = this.recurrenceForm.monthly.nthWeekday?.charAt(0);
-            if (pos === 'L') {
-                ruleArr.push('BYSETPOS=-1');
-            } else {
-                ruleArr.push(`BYSETPOS=${pos}`);
+            if ( freq === 'DAILY' ) { untilMoment = startDate.clone().add(1, 'month'); }
+            if ( freq === 'WEEKLY' ) { untilMoment = startDate.clone().add(12, 'weeks'); }
+            if ( freq === 'MONTHLY' ) { untilMoment = startDate.clone().add(12, 'months'); }
+            if ( freq === 'YEARLY' ) { untilMoment = startDate.clone().add(5, 'years'); }
+
+            if (untilMoment) {
+                this.recurrenceForm.get('end.until')?.setValue(untilMoment.toDate());
             }
         }
 
-        // End conditions
-        if (this.recurrenceForm.end.type === 'until' && this.recurrenceForm.end.until) {
-            const until = moment(this.recurrenceForm.end.until)
-                .endOf('day')
-                .utc()
-                .format('YYYYMMDDTHHmmss[Z]');
-            ruleArr.push(`UNTIL=${until}`);
-        }
+        // Set default 'count'
+        if ( endType !== 'count' )
+        {
+            let count;
 
-        if (this.recurrenceForm.end.type === 'count' && this.recurrenceForm.end.count) {
-            ruleArr.push(`COUNT=${this.recurrenceForm.end.count}`);
-        }
+            if ( freq === 'DAILY' ) { count = 30; }
+            if ( freq === 'WEEKLY' || freq === 'MONTHLY' ) { count = 12; }
+            if ( freq === 'YEARLY' ) { count = 5; }
 
-        this.rruleApplied.emit(ruleArr.join(';'));
-        this.onClose.emit();
+            this.recurrenceForm.get('end.count')?.setValue(count);
+        }
     }
+}
+
+export const weekdays = [
+    {
+        abbr : 'M',
+        label: 'Monday',
+        value: 'MO'
+    },
+    {
+        abbr : 'T',
+        label: 'Tuesday',
+        value: 'TU'
+    },
+    {
+        abbr : 'W',
+        label: 'Wednesday',
+        value: 'WE'
+    },
+    {
+        abbr : 'T',
+        label: 'Thursday',
+        value: 'TH'
+    },
+    {
+        abbr : 'F',
+        label: 'Friday',
+        value: 'FR'
+    },
+    {
+        abbr : 'S',
+        label: 'Saturday',
+        value: 'SA'
+    },
+    {
+        abbr : 'S',
+        label: 'Sunday',
+        value: 'SU'
+    }
+];
+
+export interface CalendarWeekday {
+    abbr: string;
+    label: string;
+    value: string;
 }
