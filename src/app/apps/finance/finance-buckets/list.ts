@@ -1,34 +1,38 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common'; // Include CurrencyPipe and DatePipe
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router'; // ADDED Router
-import { PersonalFinanceService } from '@/apps/finance/finance.service'; // Adjust path as necessary
+import {Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef} from '@angular/core';
+import {CommonModule, CurrencyPipe, DatePipe} from '@angular/common'; // Include CurrencyPipe and DatePipe
+import {FormsModule} from '@angular/forms';
+import {ActivatedRoute, Router} from '@angular/router'; // ADDED Router
+import {PersonalFinanceService} from '@/apps/finance/finance.service'; // Adjust path as necessary
 import {
     FinanceTransaction,
     FinanceTransactionSearchFilter, // The correct filter interface
     FinanceTransactionType, // Class for transaction types
     FinanceTransactionTypeDto,
     Money,
-    FinanceCategoryRef, FinanceBucket, FinanceBucketSearchQuery
+    FinanceCategoryRef, FinanceBucket, FinanceBucketSearchQuery, FinanceBank
 } from '@/apps/finance/finance.types'; // Use the provided interfaces
 
 // PrimeNG Imports
-import { TableModule } from 'primeng/table';
-import { PaginatorModule } from 'primeng/paginator';
-import { InputTextModule } from 'primeng/inputtext';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
-import { SkeletonModule } from 'primeng/skeleton';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { SelectModule } from "primeng/select";
-import { DialogModule } from 'primeng/dialog'; // New import for the filter dialog
-import { InputNumberModule } from 'primeng/inputnumber';
+import {TableModule} from 'primeng/table';
+import {PaginatorModule} from 'primeng/paginator';
+import {InputTextModule} from 'primeng/inputtext';
+import {ButtonModule} from 'primeng/button';
+import {TagModule} from 'primeng/tag';
+import {SkeletonModule} from 'primeng/skeleton';
+import {MultiSelectModule} from 'primeng/multiselect';
+import {SelectModule} from "primeng/select";
+import {DialogModule} from 'primeng/dialog'; // New import for the filter dialog
+import {InputNumberModule} from 'primeng/inputnumber';
 import {DatePickerModule} from "primeng/datepicker";
 import {go} from "thingies";
+import {Menu} from "primeng/menu";
+import {Confirmation, ConfirmationService, MenuItem, MessageService} from "primeng/api";
+import {ConfirmDialog} from "primeng/confirmdialog";
+import {Toast} from "primeng/toast";
 
 // Define the structure for transaction columns
 interface Column {
-    field: keyof FinanceBucket | 'displayAmount'; // Use interface keys
+    field: keyof FinanceBucket | 'actions'; // Use interface keys
     header: string;
     pipe?: 'currency' | 'date' | 'type' | 'category';
 }
@@ -59,10 +63,18 @@ interface TransactionFilterModel {
         SelectModule,
         DialogModule, // Added
         InputNumberModule, // Added
-        DatePickerModule // Using standard PrimeNG Calendar Module
+        DatePickerModule,
+        Menu,
+        ConfirmDialog,
+        Toast,
+        // Using standard PrimeNG Calendar Module
     ],
+    providers: [MessageService, DatePipe, ConfirmationService],
+
     template: `
         <div class="p-4">
+            <p-toast></p-toast>
+            <p-confirmDialog [style]="{width: '50vw'}" [baseZIndex]="1000"></p-confirmDialog>
             <h3 class="text-xl font-semibold mb-4">Buckets</h3>
 
             <div class="flex flex-column md:flex-row justify-end align-items-center mb-4 gap-3">
@@ -90,7 +102,9 @@ interface TransactionFilterModel {
                     </div>
 
                     <div class="flex items-center gap-1">
-                        <button pButton icon="pi pi-filter" label="Filter" class="p-button-outlined p-button-secondary p-button-sm" (click)="showFilterModal()"></button>
+                        <button pButton icon="pi pi-filter" label="Filter"
+                                class="p-button-outlined p-button-secondary p-button-sm"
+                                (click)="showFilterModal()"></button>
                     </div>
 
                     <div class="flex items-center gap-1">
@@ -139,7 +153,7 @@ interface TransactionFilterModel {
                             <ng-container [ngSwitch]="col.field">
 
                                 <span *ngSwitchCase="'account'">
-                                    {{ bucket.account?.name  }}
+                                    {{ bucket.account?.name }}
                                 </span>
 
                                 <span *ngSwitchDefault>{{ bucket[col.field] }}</span>
@@ -161,26 +175,39 @@ interface TransactionFilterModel {
                                 </span>
 
 
-                                <span *ngSwitchCase="'expectedIncomeAmount'" [ngClass]="{'text-red-500': bucket?.expectedIncomeAmount?.amount < 0, 'text-green-500': bucket?.expectedIncomeAmount?.amount >= 0}">
+                                <span *ngSwitchCase="'expectedIncomeAmount'"
+                                      [ngClass]="{'text-red-500': bucket?.expectedIncomeAmount?.amount < 0, 'text-green-500': bucket?.expectedIncomeAmount?.amount >= 0}">
                                     {{ bucket?.expectedIncomeAmount?.amount | currency: bucket?.expectedIncomeAmount.currencyCode }}
                                 </span>
-                                <span *ngSwitchCase="'expectedExpenseAmount'" [ngClass]="{'text-red-500': bucket?.expectedExpenseAmount?.amount < 0, 'text-green-500': bucket?.expectedExpenseAmount?.amount >= 0}">
+                                <span *ngSwitchCase="'expectedExpenseAmount'"
+                                      [ngClass]="{'text-red-500': bucket?.expectedExpenseAmount?.amount < 0, 'text-green-500': bucket?.expectedExpenseAmount?.amount >= 0}">
                                     {{ bucket?.expectedExpenseAmount?.amount | currency: bucket?.expectedExpenseAmount?.currencyCode }}
                                 </span>
-                                <span *ngSwitchCase="'expectedTransferAmount'" [ngClass]="{'text-red-500': bucket?.expectedTransferAmount?.amount < 0, 'text-green-500': bucket?.expectedTransferAmount?.amount >= 0}">
+                                <span *ngSwitchCase="'expectedTransferAmount'"
+                                      [ngClass]="{'text-red-500': bucket?.expectedTransferAmount?.amount < 0, 'text-green-500': bucket?.expectedTransferAmount?.amount >= 0}">
                                     {{ bucket?.expectedTransferAmount?.amount | currency: bucket?.expectedTransferAmount?.currencyCode }}
                                 </span>
-                                <span *ngSwitchCase="'expectedCreditCardPaymentAmount'" [ngClass]="{'text-red-500': bucket?.expectedCreditCardPaymentAmount?.amount < 0, 'text-green-500': bucket?.expectedCreditCardPaymentAmount?.amount >= 0}">
+                                <span *ngSwitchCase="'expectedCreditCardPaymentAmount'"
+                                      [ngClass]="{'text-red-500': bucket?.expectedCreditCardPaymentAmount?.amount < 0, 'text-green-500': bucket?.expectedCreditCardPaymentAmount?.amount >= 0}">
                                     {{ bucket?.expectedCreditCardPaymentAmount?.amount | currency: bucket?.expectedCreditCardPaymentAmount?.currencyCode }}
                                 </span>
-                                <span *ngSwitchCase="'expectedCreditAmount'" [ngClass]="{'text-red-500': bucket?.expectedCreditAmount?.amount < 0, 'text-green-500': bucket?.expectedCreditAmount?.amount >= 0}">
+                                <span *ngSwitchCase="'expectedCreditAmount'"
+                                      [ngClass]="{'text-red-500': bucket?.expectedCreditAmount?.amount < 0, 'text-green-500': bucket?.expectedCreditAmount?.amount >= 0}">
                                     {{ bucket?.expectedCreditAmount?.amount | currency: bucket?.expectedCreditAmount?.currencyCode }}
                                 </span>
+
+                                <span *ngSwitchCase="'actions'">
+                                    <button pButton icon="pi pi-ellipsis-v" class="p-button-text p-button-rounded"
+                                            (click)="setMenuTarget(bucket); menu.toggle($event)"></button>
+                                </span>
+
 
                             </ng-container>
                         </td>
                     </tr>
                 </ng-template>
+
+                <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
 
                 <ng-template pTemplate="emptymessage" *ngIf="!loading">
                     <tr>
@@ -263,17 +290,23 @@ interface TransactionFilterModel {
 
             <ng-template pTemplate="footer">
                 <div class="flex justify-content-between">
-                    <p-button label="Clear Filters" icon="pi pi-refresh" class="p-button-danger p-button-text" (click)="clearFilters()"></p-button>
+                    <p-button label="Clear Filters" icon="pi pi-refresh" class="p-button-danger p-button-text"
+                              (click)="clearFilters()"></p-button>
                     <div class="flex gap-2">
-                        <p-button label="Cancel" icon="pi pi-times" class="p-button-secondary p-button-text" (click)="displayFilterModal = false"></p-button>
-                        <p-button label="Apply" icon="pi pi-check" class="p-button-info" (click)="applyFilters()"></p-button>
+                        <p-button label="Cancel" icon="pi pi-times" class="p-button-secondary p-button-text"
+                                  (click)="displayFilterModal = false"></p-button>
+                        <p-button label="Apply" icon="pi pi-check" class="p-button-info"
+                                  (click)="applyFilters()"></p-button>
                     </div>
                 </div>
             </ng-template>
         </p-dialog>
     `,
     styles: [`
-        :host { display: block; }
+        :host {
+            display: block;
+        }
+
         .p-datatable-wrapper {
             border: 1px solid var(--surface-border);
             border-radius: var(--border-radius);
@@ -295,19 +328,20 @@ export class BucketsComponent implements OnInit {
 
     // Column Management
     allColumns: Column[] = [
-        { field: 'name', header: 'Name' },
-        { field: 'periodStartTime', header: 'Period Start Time' },
-        { field: 'account', header: 'Account' },
-        { field: 'startDate', header: 'Start Date' },
-        { field: 'endDate', header: 'End Date' },
-        { field: 'expectedIncomeAmount', header: 'Expected Income Amount' },
-        { field: 'expectedExpenseAmount', header: 'Expected Expense Amount' },
-        { field: 'expectedTransferAmount', header: 'Expected Transfer Amount' },
-        { field: 'expectedCreditCardPaymentAmount', header: 'Expected Credit Card Payment Amount' },
-        { field: 'expectedCreditAmount', header: 'Expected Credit Amount' },
-        { field: 'createdDate', header: 'Created Date' },
+        {field: 'name', header: 'Name'},
+        {field: 'periodStartTime', header: 'Period Start Time'},
+        {field: 'account', header: 'Account'},
+        {field: 'startDate', header: 'Start Date'},
+        {field: 'endDate', header: 'End Date'},
+        {field: 'expectedIncomeAmount', header: 'Expected Income Amount'},
+        {field: 'expectedExpenseAmount', header: 'Expected Expense Amount'},
+        {field: 'expectedTransferAmount', header: 'Expected Transfer Amount'},
+        {field: 'expectedCreditCardPaymentAmount', header: 'Expected Credit Card Payment Amount'},
+        {field: 'expectedCreditAmount', header: 'Expected Credit Amount'},
+        {field: 'createdDate', header: 'Created Date'},
+        {field : 'actions', header: 'Actions'}
     ];
-    selectedColumns: Column[] = [...this.allColumns.slice(0, 10)]; // Default visible columns
+    selectedColumns: Column[] = [...this.allColumns.slice(0, 12)]; // Default visible columns
 
     // Skeleton Data (to match the rows being requested)
     skeletonData: any[] = new Array(this.rows).fill({});
@@ -315,7 +349,7 @@ export class BucketsComponent implements OnInit {
     // Filter State
     displayFilterModal: boolean = false;
     // Keep IDs as number for consistency
-    transactionTypes = FinanceTransactionType.All.map(t => ({ id: t.id.toString(), displayName: t.displayName }));
+    transactionTypes = FinanceTransactionType.All.map(t => ({id: t.id.toString(), displayName: t.displayName}));
     // Will be populated by API call
     availableCategories: FinanceCategoryRef[] = [];
 
@@ -328,23 +362,30 @@ export class BucketsComponent implements OnInit {
         endDate: null,
     };
 
+    menuItems: MenuItem[] = [];
+    selectedBucket!: FinanceBucket;
+
     constructor(
         private route: ActivatedRoute,
         private financeService: PersonalFinanceService,
         private cdr: ChangeDetectorRef,
-        private router: Router // INJECTED Router
-    ) { }
+        private router: Router,
+        private _confirmationService: ConfirmationService,
+        private _messageService: MessageService// INJECTED Router
+    ) {
+    }
 
     ngOnInit(): void {
         this.getAvailableCategories();
         // Load initial data
         this.loadBuckets();
+        this.initMenu();
     }
 
     // --- Navigation Methods ---
     goToAddBucket(): void {
         // Navigate to the transaction creation page. Adjust the route path as needed for your application's routing setup.
-        this.router.navigate(['apps/finance/transactions/create']);
+        this.router.navigate(['apps/finance/buckets/create']);
     }
 
     // --- Data Fetching Methods ---
@@ -418,7 +459,7 @@ export class BucketsComponent implements OnInit {
         // Construct the filters array based on currentFilters state
 
 
-        const filter: FinanceBucketSearchQuery =   {
+        const filter: FinanceBucketSearchQuery = {
             paginationFilter: {
                 pageNumber: pageNumber,
                 pageSize: this.rows,
@@ -443,6 +484,66 @@ export class BucketsComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    initMenu() {
+        this.menuItems = [
+            {
+                label: 'Options',
+                items: [
+                    {label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedBucket)},
+                    {
+                        label: 'Delete',
+                        icon: 'pi pi-trash',
+                        styleClass: 'text-red-500',
+                        command: () => this.delete(this.selectedBucket)
+                    }
+                ]
+            }
+        ];
+    }
+
+    setMenuTarget(bucket: FinanceBucket) {
+        this.selectedBucket = bucket;
+    }
+
+    viewDetail(bucket: FinanceBucket) {
+        this.router.navigate(['apps/finance/buckets/' + bucket.id + '/edit']);
+    }
+
+    delete(bucket: FinanceBucket) {
+        this._confirmationService.confirm({
+            message: `Are you sure you want to delete the bucket whose name is ${bucket?.name}?`,
+            header: 'Confirm Finance Bucket',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => {
+                this.deleteBucket(bucket);
+            },
+            reject: () => {
+                this._messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled'});
+            }
+        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+    }
+
+    deleteBucket(bucket: FinanceBucket) {
+        this.financeService.deleteBucket(bucket?.id ?? "")
+            .subscribe({
+                next: () => {
+                    this._messageService.add({
+                        severity: 'success',
+                        summary: 'Deleted',
+                        detail: `The bucket has been successfully deleted.`
+                    });
+                    this.loadBuckets();
+
+                },
+                error: (err) => {
+                    console.error('Deletion failed:', err);
+                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete bank.`});
+                }
+            });
     }
 
     protected readonly go = go;
