@@ -9,7 +9,7 @@ import {
     FinanceTransactionType, // Class for transaction types
     FinanceTransactionTypeDto,
     Money,
-    FinanceCategoryRef
+    FinanceCategoryRef, FinanceBucket, IdNameRef
 } from '@/apps/finance/finance.types'; // Use the provided interfaces
 
 // PrimeNG Imports
@@ -24,10 +24,15 @@ import { SelectModule } from "primeng/select";
 import { DialogModule } from 'primeng/dialog'; // New import for the filter dialog
 import { InputNumberModule } from 'primeng/inputnumber';
 import {DatePickerModule} from "primeng/datepicker";
+import {Confirmation, ConfirmationService, MenuItem, MessageService} from "primeng/api";
+import {Menu} from "primeng/menu";
+import {ConfirmDialog} from "primeng/confirmdialog";
+import {Toast} from "primeng/toast";
+import {Divider} from "primeng/divider";
 
 // Define the structure for transaction columns
 interface Column {
-    field: keyof FinanceTransaction | 'displayAmount'; // Use interface keys
+    field: keyof FinanceTransaction | 'actions'; // Use interface keys
     header: string;
     pipe?: 'currency' | 'date' | 'type' | 'category';
 }
@@ -58,10 +63,18 @@ interface TransactionFilterModel {
         SelectModule,
         DialogModule, // Added
         InputNumberModule, // Added
-        DatePickerModule // Using standard PrimeNG Calendar Module
+        DatePickerModule,
+        Menu,
+        ConfirmDialog,
+        Toast,
+        Divider,
+        // Using standard PrimeNG Calendar Module
     ],
+    providers: [MessageService, DatePipe, ConfirmationService],
     template: `
         <div class="p-4">
+            <p-toast></p-toast>
+            <p-confirmDialog [style]="{width: '50vw'}" [baseZIndex]="1000"></p-confirmDialog>
             <h3 class="text-xl font-semibold mb-4">Transaction History</h3>
 
             <div class="flex flex-column md:flex-row justify-end align-items-center mb-4 gap-3">
@@ -179,10 +192,17 @@ interface TransactionFilterModel {
                                 <span *ngSwitchCase="'createdDate'">
                                     {{ transaction.createdDate | date: 'medium' }}
                                 </span>
+
+                                <span *ngSwitchCase="'actions'">
+                                    <button pButton icon="pi pi-ellipsis-v" class="p-button-text p-button-rounded"
+                                            (click)="setMenuTarget(transaction); menu.toggle($event)"></button>
+                                </span>
                             </ng-container>
                         </td>
                     </tr>
                 </ng-template>
+
+                <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
 
                 <ng-template pTemplate="emptymessage" *ngIf="!loading">
                     <tr>
@@ -273,6 +293,176 @@ interface TransactionFilterModel {
                 </div>
             </ng-template>
         </p-dialog>
+
+        <p-dialog
+            header="Transaction Detail: {{ selectedTransaction?.transactionNumber }}"
+            [(visible)]="displayDetailModal"
+            [modal]="true"
+            [style]="{width: '50vw'}"
+            [draggable]="false"
+            [resizable]="false"
+            *ngIf="selectedTransaction">
+
+            <div class="row">
+
+                <div class="field col-12 md:col-6">
+                    <label class="font-medium block">ID</label>
+                    <div class="detail-value">{{ selectedTransaction.id || 'N/A' }}</div>
+                </div>
+
+                <p-divider></p-divider>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Type</label>
+                    <p-tag [value]="getTransactionType(selectedTransaction.type)?.displayName || 'Unknown'"
+                           [icon]="'pi pi-' + getTransactionType(selectedTransaction.type)?.icon">
+                    </p-tag>
+                </div>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Transaction Date</label>
+                    <div class="detail-value">{{ selectedTransaction.transactionDate | date: 'medium' }}</div>
+                </div>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Created Date</label>
+                    <div class="detail-value">{{ selectedTransaction.createdDate | date: 'medium' }}</div>
+                </div>
+
+                <p-divider></p-divider>
+
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">From Account</label>
+                    <div class="detail-value">{{ selectedTransaction.fromAccount?.name || 'N/A' }} ({{ selectedTransaction.fromBank?.name || 'N/A' }})</div>
+                </div>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">To Account</label>
+                    <div class="detail-value">{{ selectedTransaction.toAccount?.name || 'N/A' }} ({{ selectedTransaction.toBank?.name || 'N/A' }})</div>
+                </div>
+
+                <p-divider></p-divider>
+
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Category</label>
+                    <div class="detail-value">{{ selectedTransaction.category?.name || 'N/A' }}</div>
+                </div>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Parent Category</label>
+                    <div class="detail-value">{{ selectedTransaction.parentCategory?.name || 'N/A' }}</div>
+                </div>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Bucket</label>
+                    <div class="detail-value">{{ selectedTransaction.bucket?.name || 'N/A' }}</div>
+                </div>
+
+
+                <p-divider></p-divider>
+
+                <div class="field col-12 md:col-6 mt-4">
+                    <label class="font-medium block">Transaction Amount</label>
+                    <div class="detail-value text-xl font-bold" [ngClass]="{'text-red-500': selectedTransaction.transactionAmount.amount < 0, 'text-green-500': selectedTransaction.transactionAmount.amount >= 0}">
+                        {{ selectedTransaction.transactionAmount.amount | currency: selectedTransaction.transactionAmount.currencyCode }}
+                    </div>
+                </div>
+
+                <ng-container *ngIf="selectedTransaction.transactionFeeAmount">
+                    <div class="field col-12 md:col-6 mt-4">
+                        <label class="font-medium block">Fee Amount</label>
+                        <div class="detail-value">
+                            {{ selectedTransaction.transactionFeeAmount.amount | currency: selectedTransaction.transactionFeeAmount.currencyCode }}
+                        </div>
+                    </div>
+                </ng-container>
+
+                <ng-container *ngIf="selectedTransaction.transactionTransferredAmount">
+                    <div class="field col-12 md:col-6 mt-4">
+                        <label class="font-medium block">Transferred Amount</label>
+                        <div class="detail-value">
+                            {{ selectedTransaction.transactionTransferredAmount.amount | currency: selectedTransaction.transactionTransferredAmount.currencyCode }}
+                        </div>
+                    </div>
+                </ng-container>
+
+                <ng-container *ngIf="selectedTransaction.exchangeRate">
+                    <div class="field col-12 md:col-6 mt-4">
+                        <label class="font-medium block">Exchange Rate</label>
+                        <div class="detail-value">{{ selectedTransaction.exchangeRate | number: '1.4-4' }}</div>
+                    </div>
+                </ng-container>
+
+                <ng-container *ngIf="selectedTransaction.installmentCount">
+                    <div class="field col-12 md:col-6 mt-4">
+                        <label class="font-medium block">Installment Count</label>
+                        <div class="detail-value">{{ selectedTransaction.installmentCount }}</div>
+                    </div>
+                </ng-container>
+
+                <ng-container *ngIf="selectedTransaction.startDate">
+                    <div class="field col-12 md:col-6 mt-4">
+                        <label class="font-medium block">Start Date (Installment)</label>
+                        <div class="detail-value">{{ selectedTransaction.startDate | date: 'mediumDate' }}</div>
+                    </div>
+                </ng-container>
+
+                <p-divider></p-divider>
+
+                <div class="field col-12">
+                    <label class="font-medium block">Note</label>
+                    <div class="detail-value p-2 border-round surface-100">{{ selectedTransaction.note || 'None' }}</div>
+                </div>
+
+            </div>
+
+        </p-dialog>
+
+        <p-dialog
+            header="Assign Bucket"
+            [(visible)]="displayAssignBucketModal"
+            [modal]="true"
+            [style]="{width: '400px'}"
+            [draggable]="false"
+            [resizable]="false"
+            *ngIf="selectedTransaction">
+
+            <div class="row">
+
+                <div class="field col-12">
+                    <label class="font-medium block">Existing Bucket</label>
+                    <div class="p-inputgroup">
+                        <span class="p-inputgroup-addon"><i class="pi pi-briefcase"></i></span>
+                        <input type="text" pInputText [value]="selectedTransaction.bucket?.name || 'Not Assigned'" disabled>
+                    </div>
+                </div>
+
+                <div class="field col-12">
+                    <label for="bucketSelect" class="font-medium block">Bucket</label>
+                    <p-select
+                        id="bucketSelect"
+                        [options]="availableBuckets"
+                        optionLabel="name"
+                        optionValue="id"
+                        [(ngModel)]="selectedBucketId"
+                        placeholder="Select Bucket"
+                        [filter]="true"
+                        appendTo = "body"
+                        styleClass="w-full">
+                    </p-select>
+                </div>
+
+            </div>
+
+            <ng-template pTemplate="footer">
+                <div class="flex justify-content-end gap-2">
+                    <p-button label="Discard" class="p-button-text p-button-secondary" (click)="displayAssignBucketModal = false"></p-button>
+                    <p-button label="Assign" icon="pi pi-check" class="p-button-primary" (click)="assignBucket()" [disabled]="!selectedBucketId"></p-button>
+                </div>
+            </ng-template>
+        </p-dialog>
     `,
     styles: [`
         :host { display: block; }
@@ -297,6 +487,7 @@ export class TransactionsComponent implements OnInit {
 
     // Column Management
     allColumns: Column[] = [
+        { field: 'actions', header: 'Actions' },
         { field: 'transactionNumber', header: 'Transaction Number' },
         { field: 'fromAccount', header: 'From Account' },
         { field: 'toAccount', header: 'To Account' },
@@ -330,17 +521,44 @@ export class TransactionsComponent implements OnInit {
         endDate: null,
     };
 
+    menuItems: MenuItem[] = [];
+    selectedTransaction !: FinanceTransaction;
+    displayDetailModal: boolean = false;
+
+    displayAssignBucketModal: boolean = false;
+    availableBuckets: IdNameRef[] = []; // Buckets for the dropdown
+    selectedBucketId: string | null = null;
+
     constructor(
         private route: ActivatedRoute,
         private financeService: PersonalFinanceService,
         private cdr: ChangeDetectorRef,
-        private router: Router // INJECTED Router
+        private router: Router, // INJECTED Router
+        private _confirmationService: ConfirmationService,
+        private _messageService: MessageService// INJECTED Router
     ) { }
 
     ngOnInit(): void {
         this.getAvailableCategories();
-        // Load initial data
+        this.initMenu();
         this.loadTransactions();
+    }
+
+    // --- Data Fetching Methods ---
+    loadAvailableBuckets(accountId: string): void {
+        // ASSUMING financeService has a method to get buckets, structured as {id: string, name: string}
+        this.financeService.getBucketsByAccountId(accountId).subscribe({
+            next: (response: any) => {
+                if (response) {
+                    this.availableBuckets = response;
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err: any) => {
+                console.error('Error loading buckets:', err);
+                this._messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load buckets for assignment.' });
+            }
+        });
     }
 
     // --- Navigation Methods ---
@@ -516,5 +734,119 @@ export class TransactionsComponent implements OnInit {
         if (name?.includes('food') || name?.includes('rent')) return 'warning';
         if (name?.includes('loan') || name?.includes('card')) return 'danger';
         return 'info';
+    }
+
+    initMenu() {
+        this.menuItems = [
+            {
+                label: 'Options',
+                items: [
+                    {label: 'Detail', icon: 'pi pi-eye', command: () => this.viewDetail(this.selectedTransaction)},
+                    {
+                        label: 'Delete',
+                        icon: 'pi pi-trash',
+                        styleClass: 'text-red-500',
+                        command: () => this.delete(this.selectedTransaction)
+                    },
+                    {label: 'Assign', icon: 'pi pi-eye', command: () => this.showAssignBucketModal(this.selectedTransaction)},
+
+                ]
+            }
+        ];
+    }
+
+    viewDetail(transaction: FinanceTransaction): void {
+        this.selectedTransaction = transaction;
+        this.displayDetailModal = true;
+        this.cdr.detectChanges(); // Ensure the dialog contents are rendered
+    }
+
+    delete(transaction: FinanceTransaction) {
+        this._confirmationService.confirm({
+            message: `Are you sure you want to delete the transaction whose name is ${transaction?.transactionNumber}?`,
+            header: 'Confirm Finance transaction',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => {
+                this.deleteFinanceTransaction(transaction);
+            },
+            reject: () => {
+                this._messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled'});
+            }
+        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+    }
+
+    deleteFinanceTransaction(transaction: FinanceTransaction) {
+        this.financeService.deleteTransaction(transaction?.id ?? "")
+            .subscribe({
+                next: () => {
+                    this._messageService.add({
+                        severity: 'success',
+                        summary: 'Deleted',
+                        detail: `The transaction has been successfully deleted.`
+                    });
+
+                    this.loadTransactions();
+
+                },
+                error: (err) => {
+                    console.error('Deletion failed:', err);
+                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete transaction.`});
+                }
+            });
+    }
+
+    setMenuTarget(transaction: FinanceTransaction) {
+        this.selectedTransaction = transaction;
+    }
+
+    showAssignBucketModal(transaction: FinanceTransaction): void {
+        this.selectedTransaction = transaction;
+        this.loadAvailableBuckets(this.selectedTransaction?.fromAccount?.id ?? "")
+        // Pre-select the current bucket ID if it exists, otherwise null
+        this.selectedBucketId = transaction.bucket?.id || null;
+        this.displayAssignBucketModal = true;
+        this.cdr.detectChanges();
+    }
+
+    assignBucket(): void {
+        if (!this.selectedBucketId || !this.selectedTransaction.id) {
+            this._messageService.add({ severity: 'warn', summary: 'Missing Data', detail: 'Please select a bucket and ensure the transaction ID is available.' });
+            return;
+        }
+
+        const bucketToAssign = this.availableBuckets.find(b => b.id === this.selectedBucketId);
+
+        if (!bucketToAssign) {
+            this._messageService.add({ severity: 'error', summary: 'Error', detail: 'Selected bucket not found in the list.' });
+            return;
+        }
+
+        // 1. Prepare Payload
+        const payload = {
+            transactionId: this.selectedTransaction.id,
+            bucket: {
+                id: bucketToAssign.id,
+                name: bucketToAssign.name
+            }
+        };
+
+        this.financeService.assignBucket(payload).subscribe({
+            next: () => {
+                this._messageService.add({
+                    severity: 'success',
+                    summary: 'Assigned',
+                    detail: `Transaction ${this.selectedTransaction.transactionNumber} assigned to ${bucketToAssign.name}.`
+                });
+                this.displayAssignBucketModal = false;
+                this.selectedBucketId = null;
+                this.loadTransactions(); // Reload table to reflect the change
+            },
+            error: (err) => {
+                console.error('Assignment failed:', err);
+                this._messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to assign bucket to transaction.' });
+            }
+        });
     }
 }

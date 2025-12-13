@@ -454,7 +454,6 @@ export class CreateInstallmentPlanComponent implements OnInit {
             return;
         }
 
-        debugger;
 
         // 1. Structure the Payload for the API (Uses transactionTypeCode)
         const payload = {

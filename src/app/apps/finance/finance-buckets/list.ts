@@ -37,15 +37,6 @@ interface Column {
     pipe?: 'currency' | 'date' | 'type' | 'category';
 }
 
-// Define the filter model structure
-interface TransactionFilterModel {
-    transactionTypeIds: number[] | null;
-    categoryIds: string[] | null;
-    minAmount: number | null;
-    maxAmount: number | null;
-    startDate: Date | null;
-    endDate: Date | null;
-}
 
 @Component({
     selector: 'app-buckets',
@@ -196,6 +187,14 @@ interface TransactionFilterModel {
                                     {{ bucket?.expectedCreditAmount?.amount | currency: bucket?.expectedCreditAmount?.currencyCode }}
                                 </span>
 
+                                <span *ngSwitchCase="'isCompleted'">
+                                        <p-tag
+                                            [value]="bucket.isCompleted ? 'Completed' : 'Active'"
+                                            [severity]="getSeverity(bucket)">
+                                            </p-tag>
+                                </span>
+
+
                                 <span *ngSwitchCase="'actions'">
                                     <button pButton icon="pi pi-ellipsis-v" class="p-button-text p-button-rounded"
                                             (click)="setMenuTarget(bucket); menu.toggle($event)"></button>
@@ -228,66 +227,6 @@ interface TransactionFilterModel {
             [style]="{width: '650px',  height: '90vh', 'max-height': '600px'}"
             [resizable]="false"
             [draggable]="false">
-
-            <div class="row">
-                <!-- Transaction Type Filter -->
-                <div class="col-12 field">
-                    <label for="typeFilter" class="font-medium mb-2 block">Transaction Type</label>
-                    <p-multiSelect
-                        id="typeFilter"
-                        [options]="transactionTypes"
-                        optionLabel="displayName"
-                        optionValue="id"
-                        [(ngModel)]="currentFilters.transactionTypeIds"
-                        placeholder="Select Types"
-                        display="chip"
-                        styleClass="w-full">
-                    </p-multiSelect>
-                </div>
-
-                <!-- Category Filter -->
-                <div class="col-12 field mt-4">
-                    <label for="categoryFilter" class="font-medium mb-2 block">Category</label>
-                    <p-multiSelect
-                        id="categoryFilter"
-                        [options]="availableCategories"
-                        optionLabel="name"
-                        optionValue="id"
-                        [(ngModel)]="currentFilters.categoryIds"
-                        placeholder="Select Categories"
-                        display="chip"
-                        styleClass="w-full">
-                    </p-multiSelect>
-                </div>
-
-
-                <!-- Date Range Filter: Using p-calendar (Datetime Picker) -->
-                <div class="col-12 field mt-4">
-                    <label class="font-medium mb-2 block">Transaction Date Range</label>
-                    <div class="p-inputgroup">
-                        <p-date-picker
-                            [(ngModel)]="currentFilters.startDate"
-                            placeholder="Start Date/Time"
-                            dateFormat="yy/mm/dd"
-                            [showTime]="true"
-                            [hourFormat]="'24'"
-                            appendTo="body"
-                            styleClass="w-full"
-                        ></p-date-picker>
-                        <span class="p-inputgroup-addon">to</span>
-                        <p-date-picker
-                            [(ngModel)]="currentFilters.endDate"
-                            placeholder="End Date/Time"
-                            dateFormat="yy/mm/dd"
-                            [showTime]="true"
-                            [hourFormat]="'24'"
-                            appendTo="body"
-                            styleClass="w-full"
-                        ></p-date-picker>
-                    </div>
-                </div>
-            </div>
-
             <ng-template pTemplate="footer">
                 <div class="flex justify-content-between">
                     <p-button label="Clear Filters" icon="pi pi-refresh" class="p-button-danger p-button-text"
@@ -338,10 +277,11 @@ export class BucketsComponent implements OnInit {
         {field: 'expectedTransferAmount', header: 'Expected Transfer Amount'},
         {field: 'expectedCreditCardPaymentAmount', header: 'Expected Credit Card Payment Amount'},
         {field: 'expectedCreditAmount', header: 'Expected Credit Amount'},
+        {field: 'isCompleted', header: 'Completed'},
         {field: 'createdDate', header: 'Created Date'},
-        {field : 'actions', header: 'Actions'}
+        {field: 'actions', header: 'Actions'}
     ];
-    selectedColumns: Column[] = [...this.allColumns.slice(0, 12)]; // Default visible columns
+    selectedColumns: Column[] = [...this.allColumns.slice(0, 13)]; // Default visible columns
 
     // Skeleton Data (to match the rows being requested)
     skeletonData: any[] = new Array(this.rows).fill({});
@@ -352,19 +292,10 @@ export class BucketsComponent implements OnInit {
     transactionTypes = FinanceTransactionType.All.map(t => ({id: t.id.toString(), displayName: t.displayName}));
     // Will be populated by API call
     availableCategories: FinanceCategoryRef[] = [];
-
-    currentFilters: TransactionFilterModel = {
-        transactionTypeIds: null,
-        categoryIds: null,
-        minAmount: null,
-        maxAmount: null,
-        startDate: null,
-        endDate: null,
-    };
-
     menuItems: MenuItem[] = [];
     selectedBucket!: FinanceBucket;
-
+    displayDetailModal: boolean = false; // <-- New property for detail dialog
+    selectedTransaction!: FinanceTransaction;
     constructor(
         private route: ActivatedRoute,
         private financeService: PersonalFinanceService,
@@ -419,14 +350,7 @@ export class BucketsComponent implements OnInit {
     }
 
     clearFilters(): void {
-        this.currentFilters = {
-            transactionTypeIds: null,
-            categoryIds: null,
-            minAmount: null,
-            maxAmount: null,
-            startDate: null,
-            endDate: null,
-        };
+
         this.applyFilters();
     }
 
@@ -497,7 +421,9 @@ export class BucketsComponent implements OnInit {
                         icon: 'pi pi-trash',
                         styleClass: 'text-red-500',
                         command: () => this.delete(this.selectedBucket)
-                    }
+                    },
+                    {label: 'Complete', icon: 'pi pi-check', command: () => this.complete(this.selectedBucket)},
+
                 ]
             }
         ];
@@ -541,9 +467,50 @@ export class BucketsComponent implements OnInit {
                 },
                 error: (err) => {
                     console.error('Deletion failed:', err);
-                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete bank.`});
+                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to delete bucket.`});
                 }
             });
+    }
+
+    complete(bucket: FinanceBucket) {
+        this._confirmationService.confirm({
+            message: `Are you sure you want to complete the bucket whose name is ${bucket?.name}?`,
+            header: 'Confirm Finance Bucket',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => {
+                this.completeBucket(bucket);
+            },
+            reject: () => {
+                this._messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Completion cancelled'});
+            }
+        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+    }
+
+    completeBucket(bucket: FinanceBucket) {
+        this.financeService.completeBucket(bucket?.id ?? "")
+            .subscribe({
+                next: () => {
+
+                    this._messageService.add({
+                        severity: 'success',
+                        summary: 'Deleted',
+                        detail: `The bucket has been successfully completed.`
+                    });
+
+                    this.loadBuckets();
+
+                },
+                error: (err) => {
+                    console.error('Deletion failed:', err);
+                    this._messageService.add({severity: 'error', summary: 'Error', detail: `Failed to completed bucket.`});
+                }
+            });
+    }
+
+    getSeverity(bank: FinanceBucket) {
+        return bank.isCompleted ? 'success' : 'danger';
     }
 
     protected readonly go = go;

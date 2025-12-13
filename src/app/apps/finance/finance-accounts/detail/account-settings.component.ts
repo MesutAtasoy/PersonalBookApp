@@ -376,7 +376,6 @@ export class AccountSettingsComponent implements OnInit {
 
         this.financeService.updateFinanceAccount(this.accountId, formValue).subscribe({
             next: () => {
-                debugger;
                 this.messageService.add({
                     severity: 'success',
                     summary: 'Success',
