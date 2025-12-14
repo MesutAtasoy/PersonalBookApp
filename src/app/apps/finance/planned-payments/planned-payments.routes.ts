@@ -1,4 +1,5 @@
 import {Routes} from "@angular/router";
+import {PlannedPaymentOverviewComponent} from "@/apps/finance/planned-payments/overview";
 export default [
     {
         path: '',
@@ -13,6 +14,11 @@ export default [
     {
         path: ':id/details',
         loadComponent: () => import('./detail').then((c) => c.InstallmentPlanManagementComponent),
-        data: { breadcrumb: 'Create' }
+        data: { breadcrumb: 'Detail' }
+    },
+    {
+        path: 'overview',
+        loadComponent: () => import('./overview').then((c) => c.PlannedPaymentOverviewComponent),
+        data: { breadcrumb: 'Overview' }
     }
 ] as Routes;

@@ -62,7 +62,18 @@ export class AppMenu {
                             {
                                 label: 'Planned Payments',
                                 icon: 'pi pi-fw pi-wallet',
-                                routerLink: ['/apps/finance/planned-payments/'],
+                                items: [
+                                    {
+                                        label: 'Overview',
+                                        icon: 'pi pi-fw pi-wave-pulse',
+                                        routerLink: ['/apps/finance/planned-payments/overview'],
+                                    },
+                                    {
+                                        label: 'Payments',
+                                        icon: 'pi pi-fw pi-money-bill',
+                                        routerLink: ['/apps/finance/planned-payments/']
+                                    }
+                                ]
                             },
                             {
                                 label: 'Buckets',
