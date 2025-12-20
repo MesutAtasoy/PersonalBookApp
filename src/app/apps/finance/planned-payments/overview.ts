@@ -36,9 +36,10 @@ import {SearchFilter} from "@/core/pagination/personal-book.pagination";
 import {Confirmation, ConfirmationService, MenuItem, MessageService} from "primeng/api";
 import {Menu} from "primeng/menu";
 import {ConfirmDialog} from "primeng/confirmdialog";
-import {Toast} from "primeng/toast";
+import {ToastModule} from "primeng/toast"; // Use ToastModule
 import moment from "moment/moment";
-import {Divider} from "primeng/divider";
+import {DividerModule} from "primeng/divider"; // Use DividerModule
+import {CardModule} from "primeng/card";
 
 // Define the structure for transaction columns
 interface Column {
@@ -67,8 +68,9 @@ interface Column {
         DatePickerModule,
         Menu,
         ConfirmDialog,
-        Toast,
-        Divider,
+        ToastModule, // Changed from Toast to ToastModule
+        DividerModule, // Changed from Divider to DividerModule
+        CardModule, // Added
         // Using standard PrimeNG Calendar Module
     ],
     providers: [MessageService, DatePipe, ConfirmationService],
@@ -82,9 +84,9 @@ interface Column {
 
             <p-divider/>
 
-            <div class="flex justify-between align-items-center mb-3">
-                <div class="text-xl font-semibold">Summary  {{ dateSummaryText }}</div>
-                <span>{{statRequest.filter.dateTimeRange.startDate | date: 'short' }} - {{statRequest.filter.dateTimeRange.endDate | date: 'short' }}</span>
+
+            <div class="flex justify-between align-items-center mb-3 card">
+                <div class="text-xl font-semibold">Summary <span class="text-base text-700">{{ dateSummaryText }}</span></div>
                 <p-button
                     label="Filter"
                     icon="pi pi-filter"
@@ -92,28 +94,49 @@ interface Column {
                 </p-button>
             </div>
 
-            <div class="grid gap-2 mt-4">
-                <div class="flex w-full" *ngFor="let statItem of stats">
-                    <div class="card w-full h-full flex flex-col items-center justify-center">
-                        <span class="text-surface-900 dark:text-surface-0 text-lg mb-6 font-medium">{{ statItem.currencyCode }}</span>
-                        <div class="flex justify-between gap-2">
-                            <div class="card  mt-4" *ngFor="let transaction of statItem.transactions">
-                                {{ getType(transaction.type)?.displayName }} ({{transaction.count}})
-
-                                <div *ngFor="let status of transaction.statues">
-                                    {{getStatus(status.status)}} ({{status.count}}) - {{status.amount  | currency: statItem.currencyCode }}
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
+            <div *ngIf="loadingStats" class="grid gap-4 mt-4">
+                <div class="col-12 lg:col-6" *ngFor="let i of [1,2]">
+                    <p-card>
+                        <p-skeleton width="50%" class="mb-2"></p-skeleton>
+                        <p-skeleton width="100%" height="2rem" class="mb-2"></p-skeleton>
+                        <p-skeleton width="100%" height="2rem"></p-skeleton>
+                    </p-card>
                 </div>
             </div>
 
+            <div *ngIf="!loadingStats && stats" class="">
+                <div class="col-12 lg:col-6 mt-4" *ngFor="let statItem of stats">
+                    <p-card header="{{ statItem.currencyCode }}" [subheader]="'Total ' + (statItem.transactions.length > 0 ? statItem.transactions[0].type : 'N/A')">
+
+                        <div class="flex flex-column gap-3">
+                            <div class="flex flex-col gap-2 p-3 surface-100 dark:surface-800 rounded-md" *ngFor="let transaction of statItem.transactions">
+                                <div class="font-medium text-lg flex justify-between align-items-center">
+                                    <span>{{ getType(transaction.type)?.displayName }} ({{transaction.count}})</span>
+                                    <i [class]="'pi pi-' + getType(transaction.type)?.icon"></i>
+                                </div>
+                                <p-divider/>
+                                <div class="grid">
+                                    <div class="col-12 md:col-6" *ngFor="let status of transaction.statues">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-light text-600">{{getStatus(status.status)}} ({{status.count}})</span>
+                                            <span
+                                                class="font-semibold text-lg"
+                                                [ngClass]="{'text-red-500': transaction.type === 2, 'text-green-500': transaction.type === 1}">
+                                                {{status.amount  | currency: statItem.currencyCode }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </p-card>
+                </div>
+            </div>
+
+
             <p-divider/>
 
-            <div class="flex flex-column md:flex-row justify-end align-items-center mt-4 mb-4 gap-3">
-
+            <div class="flex flex-column md:flex-row justify-between align-items-center mt-4 mb-4 gap-3">
                 <div class="p-inputgroup w-full md:w-30rem">
                     <input
                         type="text"
@@ -124,17 +147,13 @@ interface Column {
                     <button type="button" pButton icon="pi pi-search" (click)="loadInstallmentPlans()"></button>
                 </div>
 
-                <!-- Action Buttons: Add Transaction, Filter, and Column Customization -->
-                <div class="flex justify-end items-center gap-3 w-full">
-                    <!-- NEW: Add Transaction Button -->
-                    <div class="flex items-center gap-1">
-                        <button pButton
-                                icon="pi pi-plus"
-                                label="Add Planned Payment Plan"
-                                class="p-button-primary p-button-sm"
-                                (click)="goToAddTransaction()">
-                        </button>
-                    </div>
+                <div class="flex justify-end items-center gap-3 w-full md:w-auto">
+                    <button pButton
+                            icon="pi pi-plus"
+                            label="Add Planned Payment Plan"
+                            class="p-button-primary p-button-sm p-button-outlined"
+                            (click)="goToAddTransaction()">
+                    </button>
 
                     <div class="flex items-center gap-1">
                         <i class="pi pi-cog text-xl text-700 hidden md:block" title="Customize Columns"></i>
@@ -147,15 +166,13 @@ interface Column {
                             styleClass="w-full md:w-20rem">
                         </p-multiSelect>
                     </div>
-
-
                 </div>
             </div>
 
             <p-table
-                [value]="loading ? skeletonData : plannedPayments"
+                [value]="plannedPayments"
                 [scrollable]="true"
-                scrollHeight="1000px"
+                scrollHeight="60vh"
                 [paginator]="true"
                 [rows]="rows"
                 [totalRecords]="totalRecords"
@@ -204,15 +221,18 @@ interface Column {
                                 <p-tag
                                     *ngSwitchCase="'type'"
                                     [value]="getType(plannedPayment.type)?.displayName || 'Unknown'"
-                                    [icon]="'pi pi-' + getType(plannedPayment.type)?.icon">
+                                    [icon]="'pi pi-' + getType(plannedPayment.type)?.icon"
+                                    [severity]="getTypeSeverity(plannedPayment.type)">
                                 </p-tag>
 
                                 <span *ngSwitchCase="'amount'"
+                                      class="font-medium"
                                       [ngClass]="{'text-red-500': plannedPayment.amount?.amount < 0, 'text-green-500': plannedPayment.amount?.amount >= 0}">
                                     {{ plannedPayment.amount?.amount | currency: plannedPayment.amount?.currencyCode }}
                                 </span>
 
                                 <span *ngSwitchCase="'paidAmount'"
+                                      class="font-medium"
                                       [ngClass]="{'text-red-500': plannedPayment.paidAmount?.amount < 0, 'text-green-500': plannedPayment.paidAmount?.amount >= 0}">
                                     {{ plannedPayment.paidAmount?.amount | currency: plannedPayment.paidAmount?.currencyCode }}
                                 </span>
@@ -221,9 +241,11 @@ interface Column {
                                     {{ plannedPayment.createdDate | date: 'medium' }}
                                 </span>
 
-                                <span *ngSwitchCase="'status'">
-                                                {{ getStatus(plannedPayment.status) }}
-                                            </span>
+                                <p-tag
+                                    *ngSwitchCase="'status'"
+                                    [value]="getStatus(plannedPayment.status)"
+                                    [severity]="getStatusSeverity(plannedPayment.status)">
+                                </p-tag>
 
                                 <span *ngSwitchCase="'actions'">
                                     <button pButton icon="pi pi-ellipsis-v" class="p-button-text p-button-rounded"
@@ -231,8 +253,8 @@ interface Column {
                                 </span>
 
                                 <span *ngSwitchCase="'dueDate'">
-                                                {{ plannedPayment.dueDate | date: 'medium' }}
-                                            </span>
+                                    {{ plannedPayment.dueDate | date: 'medium' }}
+                                </span>
 
                             </ng-container>
                         </td>
@@ -243,7 +265,7 @@ interface Column {
                 <ng-template pTemplate="emptymessage" *ngIf="!loading">
                     <tr>
                         <td [attr.colspan]="selectedColumns.length" class="text-center p-4">
-                            No transactions found for the current criteria.
+                            No planned payment items found for the current criteria.
                         </td>
                     </tr>
                 </ng-template>
@@ -335,6 +357,7 @@ export class PlannedPaymentOverviewComponent implements OnInit {
     plannedPayments: FinancePlannedPaymentItem[] = [];
     totalRecords: number = 0;
     loading: boolean = true;
+    loadingStats: boolean = true; // New loading state for stats
 
     // Pagination and Filter State
     rows: number = 50;
@@ -357,7 +380,7 @@ export class PlannedPaymentOverviewComponent implements OnInit {
         {field: 'parentCategory', header: 'Parent Category'},
         {field: 'createdDate', header: 'Created Date'},
     ];
-    selectedColumns: Column[] = [...this.allColumns.slice(0, 6)]; // Default visible columns
+    selectedColumns: Column[] = [...this.allColumns.slice(0, 7), this.allColumns[10]]; // Default visible columns + Parent Category
 
     // Skeleton Data (to match the rows being requested)
     skeletonData: any[] = new Array(this.rows).fill({});
@@ -369,14 +392,15 @@ export class PlannedPaymentOverviewComponent implements OnInit {
     dateTimeRangeOptions: DateTimeRangeTypeDto[] = DateTimeRangeType.All;
 
     filterParameters = {
-        filter: DateTimeRangeType.All[9].id, // Default to Last 12 Month
+        filter: DateTimeRangeType.All[3].id, // Default to Next 7 Days (index 3) based on image
         startDate: null as Date | null,
         endDate: null as Date | null,
     };
 
     tempFilter: { filter: number, startDate: Date | null, endDate: Date | null } = {...this.filterParameters};
-    stats : any;
+    stats : any[] = [];
     statRequest : any;
+
     constructor(
         private route: ActivatedRoute,
         private financeService: PersonalFinanceService,
@@ -388,21 +412,30 @@ export class PlannedPaymentOverviewComponent implements OnInit {
     }
 
     ngOnInit(): void {
+        // Initialize tempFilter to match the default value used in the image/initial load
+        this.tempFilter.filter = DateTimeRangeType.All[3].id;
         this.loadInstallmentPlans();
         this.initMenu();
     }
 
     // --- Navigation Methods ---
     goToAddTransaction(): void {
-        // Navigate to the transaction creation page. Adjust the route path as needed for your application's routing setup.
         this.router.navigate(['apps/finance/planned-payments/create']);
     }
 
     onLazyLoad(event: any) {
-        this.first = event.first;
-        this.rows = event.rows;
-        // PrimeNG sorts are not fully implemented here, so we only pass basic info
-        this.loadInstallmentPlans(event.sortField, event.sortOrder);
+        // Only reload if the pagination state has actually changed, to prevent double load on init
+        const newFirst = event.first;
+        const newRows = event.rows;
+        if (newFirst !== this.first || newRows !== this.rows) {
+            this.first = newFirst;
+            this.rows = newRows;
+            this.loadInstallmentPlans(event.sortField, event.sortOrder);
+        } else if (event.sortField) {
+            // Handle sort-only event if needed, but keeping simple for now
+            this.loadInstallmentPlans(event.sortField, event.sortOrder);
+        }
+
     }
 
     onSearchChange() {
@@ -415,13 +448,10 @@ export class PlannedPaymentOverviewComponent implements OnInit {
         }, 500);
     }
 
-    loadInstallmentPlans(sortField: string = '', sortOrder: number = 1): void {
-        this.loading = true;
-        this.skeletonData = new Array(this.rows).fill({});
-
+    private buildFilter(): FinancePlannedPaymentItemSearchFilter {
         const pageNumber = Math.floor(this.first / this.rows) + 1;
 
-        const filter: FinancePlannedPaymentItemSearchFilter = {
+        return {
             search: {
                 value: this.searchQuery
             },
@@ -437,7 +467,16 @@ export class PlannedPaymentOverviewComponent implements OnInit {
                 pageSize: this.rows
             }
         };
+    }
 
+    loadInstallmentPlans(sortField: string = '', sortOrder: number = 1): void {
+        this.loading = true;
+        this.loadingStats = true;
+        // Do not update skeleton data size until the first request completes, for smoother visual.
+
+        const filter = this.buildFilter();
+
+        // 1. Load Planned Payment Items (Table Data)
         this.financeService.searchFinancePlannedPaymentItems(filter).subscribe({
             next: (response: any) => {
                 this.plannedPayments = response.data.data;
@@ -446,7 +485,7 @@ export class PlannedPaymentOverviewComponent implements OnInit {
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
-                console.error('Error loading transactions:', err);
+                console.error('Error loading planned payment items:', err);
                 this.plannedPayments = [];
                 this.totalRecords = 0;
                 this.loading = false;
@@ -454,27 +493,32 @@ export class PlannedPaymentOverviewComponent implements OnInit {
             }
         });
 
+        // 2. Load Stats
         this.financeService.financePlannedPaymentItemStats(filter)
             .subscribe({
                 next: (response: any) => {
-                    debugger;
                     this.statRequest = response.payload.request;
                     this.stats = response.payload.data;
+                    this.loadingStats = false;
                     this.cdr.detectChanges();
                 },
-                    error: (err: any) => {
-                    console.error('Error loading transactions:', err);
+                error: (err: any) => {
+                    console.error('Error loading planned payment item stats:', err);
+                    this.stats = [];
+                    this.loadingStats = false;
                     this.cdr.detectChanges();
                 }
             })
     }
+
+    // --- Data Mapping & Utility Methods ---
 
     getType(typeId: number | undefined): FinanceTransactionTypeDto | undefined {
         if (typeId === undefined) return undefined;
         return FinanceTransactionType.All.find(t => t.id === typeId);
     }
 
-    getTypeSeverity(typeId: number | undefined): 'success' | 'warning' | 'info' | 'danger' | 'primary' {
+    getTypeSeverity(typeId: number | undefined): any {
         switch (this.getType(typeId)?.name) {
             case 'Income':
                 return 'success';
@@ -490,6 +534,26 @@ export class PlannedPaymentOverviewComponent implements OnInit {
                 return 'info';
         }
     }
+
+    getStatus(status: number): string {
+        let itemStatus = FinancePlannedPaymentItemStatus.All.find(x => x.id === status)?.displayName;
+        return itemStatus || 'Unknown Status';
+    }
+
+    getStatusSeverity(status: number): "success" | "secondary" | "info" | "warn" | "danger" | "contrast" | undefined | null {
+        switch (this.getStatus(status)) {
+            case 'Created':
+                return 'success';
+            case 'Pending':
+                return 'warn';
+            case 'Cancelled':
+                return 'danger';
+            default:
+                return 'info';
+        }
+    }
+
+    // --- Menu & Action Methods (Using FinancePlannedPayment interface for details/delete) ---
 
     initMenu() {
         this.menuItems = [
@@ -513,17 +577,19 @@ export class PlannedPaymentOverviewComponent implements OnInit {
     }
 
     setMenuTarget(plannedPayment: FinancePlannedPayment) {
+        // Need to cast the item to the base plan if the table is showing FinancePlannedPaymentItem,
+        // but the actions are on the FinancePlannedPayment
         this.selectedFinancePlannedPayment = plannedPayment;
     }
 
-    viewDetail(bucket: FinancePlannedPayment) {
-        this.router.navigate(['apps/finance/planned-payments/' + bucket.id + '/details']);
+    viewDetail(plannedPayment: any) {
+        this.router.navigate(['apps/finance/planned-payments/' + plannedPayment.financePlannedPaymentId + '/details']);
     }
 
     delete(plannedPayment: FinancePlannedPayment) {
         this.confirmationService.confirm({
             message: `Are you sure you want to delete the planned payment whose name is ${plannedPayment?.name}?`,
-            header: 'Confirm Finance Bucket',
+            header: 'Confirm Planned Payment Deletion',
             icon: 'pi pi-exclamation-triangle',
             acceptButtonStyleClass: 'p-button-danger',
             rejectButtonStyleClass: 'p-button-text',
@@ -533,7 +599,7 @@ export class PlannedPaymentOverviewComponent implements OnInit {
             reject: () => {
                 this.messageService.add({severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled'});
             }
-        } as Confirmation); // Cast to Confirmation type if needed, though Angular often infers this.
+        } as Confirmation);
     }
 
     deletePlannedPayment(plannedPayment: FinancePlannedPayment) {
@@ -547,7 +613,6 @@ export class PlannedPaymentOverviewComponent implements OnInit {
                     });
 
                     this.loadInstallmentPlans();
-
                 },
                 error: (err) => {
                     console.error('Deletion failed:', err);
@@ -560,10 +625,8 @@ export class PlannedPaymentOverviewComponent implements OnInit {
             });
     }
 
-    getStatus(status: number) {
-        let itemStatus = FinancePlannedPaymentItemStatus.All.find(x => x.id === status)?.displayName;
-        return itemStatus;
-    }
+
+    // --- Filter Dialog Methods ---
 
     onFilterTypeChange(): void {
         if (this.tempFilter.filter !== 9) {
@@ -597,11 +660,13 @@ export class PlannedPaymentOverviewComponent implements OnInit {
         this.filterParameters.endDate = this.tempFilter.endDate;
 
         this.showFilterDialog = false;
+        this.first = 0; // Reset pagination when applying a new filter
         this.loadInstallmentPlans();
     }
 
     resetFilter(): void {
-        const defaultFilterCode = DateTimeRangeType.All[3].id;
+        const defaultFilterCode = DateTimeRangeType.All[3].id; // Next 7 Days
+
         this.tempFilter.filter = defaultFilterCode;
         this.tempFilter.startDate = null;
         this.tempFilter.endDate = null;
@@ -611,15 +676,15 @@ export class PlannedPaymentOverviewComponent implements OnInit {
         this.filterParameters.endDate = null;
 
         this.showFilterDialog = false;
+        this.first = 0; // Reset pagination
+        this.loadInstallmentPlans();
     }
 
     resetFilterDialog(): void {
         this.tempFilter = {...this.filterParameters};
     }
 
-    // --- Helper Getters (Unchanged) ---
-
-    get dateSummaryText(): any {
+    get dateSummaryText(): string {
         const currentFilter = this.dateTimeRangeOptions.find(o => o.id === this.filterParameters.filter);
 
         if (this.filterParameters.filter === 9 && this.filterParameters.startDate && this.filterParameters.endDate) {
@@ -628,8 +693,7 @@ export class PlannedPaymentOverviewComponent implements OnInit {
             return `${start} - ${end}`;
         }
 
-        if (currentFilter) {
-            return currentFilter?.displayName;
-        }
+        return currentFilter?.displayName || 'Loading...';
     }
+
 }

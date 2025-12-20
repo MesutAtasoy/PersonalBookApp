@@ -92,7 +92,7 @@ interface PaymentRequest {
         <div class="card p-4">
             <p-toast></p-toast>
 
-            <h2 class="text-2xl font-semibold mb-4">💰 {{ selectedPlan?.name }} | Installment Plans</h2>
+            <h2 class="text-2xl font-semibold mb-4">💰 {{ selectedPlan?.name ?? "" }} | Installment Plans</h2>
 
             <p-tabs value="0">
                 <p-tablist>
@@ -418,7 +418,7 @@ interface PaymentRequest {
                     <label for="amount" class="font-medium block mb-2">Amount *</label>
                     <p-inputNumber
                         inputId="amount"
-                        [ngModel]="paymentRequest?.amount"
+                        [ngModel]="paymentRequest?.amount ?? 0"
                         (ngModelChange)="paymentRequest.amount = $event || 0"
                         mode="currency"
                         [currency]="selectedFinancePlannedPaymentItem?.amount?.currencyCode || 'USD'"

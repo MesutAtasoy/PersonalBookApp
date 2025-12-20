@@ -305,6 +305,7 @@ interface PaymentRequest {
                                 <th>Principal</th>
                                 <th>Interest</th>
                                 <th>Total Due</th>
+                                <th>Amount</th>
                                 <th>Paid Amount</th>
                                 <th>Status</th>
                                 <th class="text-center">Action</th> <!-- New Column -->
@@ -321,6 +322,7 @@ interface PaymentRequest {
                                         {{ detail.totalDueAmount | currency: detail.currencyCode }}
                                     </span>
                                 </td>
+                                <td>{{ detail.amount | currency: detail.currencyCode }}</td>
                                 <td>{{ detail.paidAmount | currency: detail.currencyCode }}</td>
                                 <td>
                                     <p-tag
