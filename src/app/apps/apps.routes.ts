@@ -2,11 +2,6 @@ import { Routes } from '@angular/router';
 
 export default [
     {
-        path: 'blog',
-        loadChildren: () => import('./blog/blog.routes'),
-        data: { breadcrumb: 'Blog' }
-    },
-    {
         path: 'finance',
         loadChildren: () => import('./finance/finance.routes'),
         data: { breadcrumb: 'Finance' }
@@ -16,6 +11,17 @@ export default [
         loadChildren: () => import('./academy/academy.routes'),
         data: { breadcrumb: 'Academy' }
     },
+    {
+        path: 'tasks',
+        loadChildren: () => import('./task/tasks.routes'),
+        data: { breadcrumb: 'Task' }
+    },
+    {
+        path: 'blog',
+        loadChildren: () => import('./blog/blog.routes'),
+        data: { breadcrumb: 'Blog' }
+    },
+
     {
         path: 'chat',
         loadComponent: () => import('./chat').then((c) => c.Chat),

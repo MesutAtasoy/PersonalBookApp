@@ -109,6 +109,11 @@ export class AppMenu {
                         ],
                     },
                     {
+                        label: 'Task',
+                        icon: 'pi pi-fw pi-book',
+                        routerLink: ['/apps/tasks'],
+                    },
+                    {
                         label: 'Blog',
                         icon: 'pi pi-fw pi-comment',
                         items: [
