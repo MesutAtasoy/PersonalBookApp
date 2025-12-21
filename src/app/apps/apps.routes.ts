@@ -17,6 +17,11 @@ export default [
         data: { breadcrumb: 'Task' }
     },
     {
+        path: 'system-configuration',
+        loadChildren: () => import('./system-configuration/system-configurations.routes'),
+        data: { breadcrumb: 'System Configuration' }
+    },
+    {
         path: 'blog',
         loadChildren: () => import('./blog/blog.routes'),
         data: { breadcrumb: 'Blog' }

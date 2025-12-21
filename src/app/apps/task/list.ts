@@ -19,6 +19,8 @@ import {ConfirmDialogModule} from "primeng/confirmdialog";
 import {PaginatorModule} from "primeng/paginator";
 import {SelectModule} from "primeng/select";
 import {DialogModule} from "primeng/dialog";
+import {InputIcon} from "primeng/inputicon";
+import {IconField} from "primeng/iconfield";
 
 export interface Task {
     id?: string;
@@ -37,7 +39,7 @@ export interface Task {
         CommonModule, FormsModule, CheckboxModule, ButtonModule,
         InputTextModule, EditorModule, DatePickerModule,
         TagModule, ToastModule, SkeletonModule, ConfirmDialogModule,
-        PaginatorModule, SelectModule, DialogModule
+        PaginatorModule, SelectModule, DialogModule, InputIcon, IconField
     ],
     providers: [MessageService, ConfirmationService],
     template: `
@@ -106,11 +108,12 @@ export interface Task {
                         <button (click)="openCreateDialog()" class="w-10 h-10 rounded-xl bg-indigo-600 text-white border-none cursor-pointer"><i class="pi pi-plus"></i></button>
                     </div>
                     <div class="space-y-2">
-                        <div class="relative">
-                            <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                            <input type="text" pInputText [(ngModel)]="searchText" (ngModelChange)="onSearchChange($event)"
-                                   placeholder="Search archive..." class="w-full pl-10 bg-slate-100 border-none rounded-xl py-3 text-sm" />
-                        </div>
+                        <p-icon-field iconPosition="left">
+                            <p-inputicon class="pi pi-search"/>
+                            <input
+                                type="text" pInputText [(ngModel)]="searchText" (ngModelChange)="onSearchChange($event)"
+                                placeholder="Search archive..." class="w-full pl-10 bg-slate-100 border-none rounded-xl py-3 text-sm"/>
+                        </p-icon-field>
                         <p-select [options]="sortOptions" [(ngModel)]="selectedSort" (onChange)="onSortChange()" optionLabel="label" styleClass="w-full bg-slate-100 border-none rounded-xl"></p-select>
                     </div>
                 </div>
