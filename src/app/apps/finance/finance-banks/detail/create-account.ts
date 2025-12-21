@@ -207,6 +207,10 @@ import {DatePickerModule} from "primeng/datepicker";
                             <p-inputNumber id="installmentCount" formControlName="installmentCount" [useGrouping]="false" [min]="1" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
                         </div>
                         <div class="p-field col-12 md:col-6 mt-4">
+                            <label for="interestAmount" class="font-medium mb-2 block">Installment Amount</label>
+                            <p-inputNumber id="installmentAmount" formControlName="installmentAmount" mode="currency" [currency]="selectedCurrencyCode" locale="en-US" [minFractionDigits]="2" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
+                        </div>
+                        <div class="p-field col-12 md:col-6 mt-4">
                             <label for="startDate" class="font-medium mb-2 block">Loan Start Date *</label>
                             <p-date-picker id="startDate" formControlName="startDate" dateFormat="yy-mm-dd" [showIcon]="true" styleClass="w-full"></p-date-picker>
                         </div>
@@ -289,7 +293,8 @@ export class AccountCreateComponent implements OnInit {
             interestAmount: [0],
             interestRate: [0],
             installmentCount: [0],
-            startDate: [null]
+            startDate: [null],
+            installmentAmount: [0]
         });
 
         this.setDynamicValidators(null);
@@ -331,7 +336,7 @@ export class AccountCreateComponent implements OnInit {
         const fieldsToClear = [
             'iban', 'accountNumber',
             'creditLimit', 'availableCredit', 'currentDebt', 'statementClosingDate', 'minimumPayment', 'paymentDueDate',
-            'loanNumber', 'principalTotalAmount', 'interestAmount', 'interestRate', 'installmentCount', 'startDate'
+            'loanNumber', 'principalTotalAmount', 'interestAmount', 'interestRate', 'installmentCount', 'startDate', 'installmentAmount'
         ];
 
         fieldsToClear.forEach(field => {
@@ -397,7 +402,7 @@ export class AccountCreateComponent implements OnInit {
         const coreFields = ['bank', 'type', 'name', 'description', 'accountHolderName', 'branchName', 'openingDate', 'balance', 'currencyCode'];
         const currentCardFields = ['iban', 'accountNumber'];
         const creditCardFields = ['creditLimit', 'availableCredit', 'currentDebt', 'statementClosingDate', 'minimumPayment', 'paymentDueDate'];
-        const loanFields = ['loanNumber', 'principalTotalAmount', 'interestAmount', 'interestRate', 'installmentCount', 'startDate'];
+        const loanFields = ['loanNumber', 'principalTotalAmount', 'interestAmount', 'interestRate', 'installmentCount', 'startDate', 'installmentAmount'];
 
         if (coreFields.includes(key)) return true;
         if (this.isCurrentOrCreditCard && currentCardFields.includes(key)) return true;

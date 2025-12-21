@@ -12,6 +12,11 @@ export default [
         data: { breadcrumb: 'Finance' }
     },
     {
+        path: 'academy',
+        loadChildren: () => import('./academy/academy.routes'),
+        data: { breadcrumb: 'Academy' }
+    },
+    {
         path: 'chat',
         loadComponent: () => import('./chat').then((c) => c.Chat),
         data: { breadcrumb: 'Chat' }

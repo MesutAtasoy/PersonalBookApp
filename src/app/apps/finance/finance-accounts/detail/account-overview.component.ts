@@ -616,4 +616,6 @@ export class AccountOverviewComponent implements OnInit {
         if (typeId === undefined) return undefined;
         return FinanceTransactionType.All.find(t => t.id === typeId);
     }
+
+
 }

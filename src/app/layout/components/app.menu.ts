@@ -46,6 +46,11 @@ export class AppMenu {
                 icon: 'pi pi-th-large',
                 items: [
                     {
+                        label: 'Academy',
+                        icon: 'pi pi-fw pi-book',
+                        routerLink: ['/apps/academy'],
+                    },
+                    {
                         label: 'Finance',
                         icon: 'pi pi-fw pi-wallet',
                         items: [
