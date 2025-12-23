@@ -10,3 +10,10 @@ export interface Task
     priority?: 0 | 1 | 2;
     order?: number;
 }
+
+export interface Tag
+{
+    id?: string;
+    title?: string;
+    color?: string;
+}

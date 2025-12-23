@@ -7,4 +7,9 @@ export default [
         loadComponent: () => import('./list').then((c) => c.TaskListComponent),
         data: { breadcrumb: '' }
     },
+    {
+        path: 'tags',
+        loadComponent: () => import('./tags').then((c) => c.TagListComponent),
+        data: { breadcrumb: '' }
+    }
 ] as Routes;
