@@ -247,6 +247,7 @@ import {Toast} from "primeng/toast";
                                 optionValue="id"
                                 placeholder="Select a bank"
                                 required
+                                appendTo="body"
                                 class="w-full">
                             </p-select>
                         </ng-template>
