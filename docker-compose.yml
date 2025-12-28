@@ -1,0 +1,15 @@
+version: "3"
+services: 
+    personal-book:
+        build: .
+        restart: always
+        ports: 
+            - 11111:80
+        networks:
+            - personal-book
+
+
+networks:
+  personal-book:
+    external: true                        
+                 

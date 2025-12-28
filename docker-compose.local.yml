@@ -1,0 +1,16 @@
+version: "3"
+services: 
+    personal-book:
+      image: 192.168.0.102/personal.book.console        
+      container_name: personal.book.console
+      build: .
+      restart: always
+      ports: 
+        - 80:80
+      networks:
+        - personal-book
+
+networks:
+  personal-book:
+    external: true                        
+                 
