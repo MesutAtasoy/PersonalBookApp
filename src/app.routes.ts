@@ -14,7 +14,7 @@ export const appRoutes: Routes = [
             {
                 path: '',
                 loadComponent: () => import('./app/pages/dashboards/ecommercedashboard').then(c => c.EcommerceDashboard),
-                data: { breadcrumb: 'E-Commerce Dashboard' },
+                data: { breadcrumb: 'Dashboard' },
             },
             {
                 path: 'dashboard-banking',

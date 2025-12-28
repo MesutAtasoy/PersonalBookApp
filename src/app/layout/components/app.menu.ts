@@ -30,15 +30,10 @@ export class AppMenu {
                 icon: 'pi pi-home',
                 items: [
                     {
-                        label: 'E-Commerce',
+                        label: 'Main',
                         icon: 'pi pi-fw pi-home',
                         routerLink: ['/'],
-                    },
-                    {
-                        label: 'Banking',
-                        icon: 'pi pi-fw pi-image',
-                        routerLink: ['/dashboard-banking'],
-                    },
+                    }
                 ],
             },
             {
@@ -117,64 +112,7 @@ export class AppMenu {
                         label: 'System Configuration',
                         icon: 'pi pi-fw pi-cog',
                         routerLink: ['/apps/system-configuration'],
-                    },
-                    {
-                        label: 'Blog',
-                        icon: 'pi pi-fw pi-comment',
-                        items: [
-                            {
-                                label: 'List',
-                                icon: 'pi pi-fw pi-image',
-                                routerLink: ['/apps/blog/list'],
-                            },
-                            {
-                                label: 'Detail',
-                                icon: 'pi pi-fw pi-list',
-                                routerLink: ['/apps/blog/detail'],
-                            },
-                            {
-                                label: 'Edit',
-                                icon: 'pi pi-fw pi-pencil',
-                                routerLink: ['/apps/blog/edit'],
-                            },
-                        ],
-                    },
-                    {
-                        label: 'Chat',
-                        icon: 'pi pi-fw pi-comments',
-                        routerLink: ['/apps/chat'],
-                    },
-                    {
-                        label: 'Files',
-                        icon: 'pi pi-fw pi-folder',
-                        routerLink: ['/apps/files'],
-                    },
-                    {
-                        label: 'Kanban',
-                        icon: 'pi pi-fw pi-sliders-v',
-                        routerLink: ['/apps/kanban']
-                    },
-                    {
-                        label: 'Mail',
-                        icon: 'pi pi-fw pi-envelope',
-                        items: [
-                            {
-                                label: 'Inbox',
-                                icon: 'pi pi-fw pi-inbox',
-                                routerLink: ['/apps/mail/inbox'],
-                            },
-                            {
-                                label: 'Compose',
-                                icon: 'pi pi-fw pi-pencil',
-                                routerLink: ['/apps/mail/compose'],
-                            },
-                            {
-                                label: 'Detail',
-                                icon: 'pi pi-fw pi-comment',
-                                routerLink: ['/apps/mail/detail/1000'],
-                            },
-                        ],
-                    },
+                    }
                 ],
             }
         ];
