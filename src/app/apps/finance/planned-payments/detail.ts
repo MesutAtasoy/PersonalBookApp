@@ -973,7 +973,7 @@ export class InstallmentPlanManagementComponent implements OnInit {
     delete(plannedPayment: FinancePlannedPaymentItem) {
         this.confirmationService.confirm({
             message: `Are you sure you want to delete the planned payment item whose name is ${plannedPayment?.name}?`,
-            header: 'Confirm Finance Bucket',
+            header: 'Confirm Planned Payment',
             icon: 'pi pi-exclamation-triangle',
             acceptButtonStyleClass: 'p-button-danger',
             rejectButtonStyleClass: 'p-button-text',
