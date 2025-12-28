@@ -28,7 +28,7 @@ pipeline {
             steps {
                 sshagent(['jenkins-server']) {
                     sh "ssh -o StrictHostKeyChecking=no $SSH_USERNAME@$SSH_HOST 'rm -rf /var/www/html/*'"
-                    sh "scp -r ./dist/apollo-ng/* $SSH_USERNAME@$SSH_HOST:/var/www/html"
+                    sh "scp -r ./dist/apollo-ng/browser/* $SSH_USERNAME@$SSH_HOST:/var/www/html"
                     sh "ssh -o StrictHostKeyChecking=no $SSH_USERNAME@$SSH_HOST 'sudo systemctl restart nginx'"
                 }
             }
