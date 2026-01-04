@@ -10,5 +10,10 @@ export default [
         path: 'logs',
         loadChildren: () => import('./logs/content-logs.routes'),
         data: { breadcrumb: 'Logs' }
+    },
+    {
+        path: 'digests',
+        loadChildren: () => import('./digests/content-digests.routes'),
+        data: { breadcrumb: 'Digests' }
     }
 ] as Routes;

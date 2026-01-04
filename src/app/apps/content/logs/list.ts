@@ -197,13 +197,8 @@ export class ContentLogsListComponent implements OnInit, OnDestroy {
             .subscribe((res: any) => {
                 let data = res.payload?.data || res || [];
 
-                // Frontend filtering for profileKey if backend doesn't handle it via SearchFilter
-                if (this.profileKeyFilter) {
-                    data = data.filter((l: ContentLog) => l.profileKey === this.profileKeyFilter);
-                }
-
                 this.logs = data;
-                this.totalRecords = res.payload?.totalCount || this.logs.length;
+                this.totalRecords = res.payload?.totalRecords || this.logs.length;
             });
     }
 

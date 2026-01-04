@@ -32,9 +32,14 @@
                             }
                         ],
                         "styles": [
-                            "src/assets/styles.scss"
+                            "src/assets/styles.scss",
+                            "node_modules/prismjs/themes/prism-okaidia.css"
                         ],
-                        "scripts": []
+                        "scripts": [
+                            "node_modules/prismjs/prism.js",
+                            "node_modules/prismjs/components/prism-csharp.min.js",
+                            "node_modules/prismjs/components/prism-css.min.js"
+                        ]
                     },
                     "configurations": {
                         "production": {
@@ -84,7 +89,7 @@
                         ],
                         "tsConfig": "tsconfig.spec.json",
                         "inlineStyleLanguage": "scss",
-                         "assets": [
+                        "assets": [
                             "src/favicon.ico",
                             "src/assets"
                         ],
@@ -98,6 +103,6 @@
         }
     },
     "cli": {
-      "analytics": false
+        "analytics": false
     }
 }

@@ -6,22 +6,22 @@ export interface ContentProfile {
     schedule: string;
     topics: string[];
     keywords: string[];
-    output: OutputSettings;
+    notificationSettings: ContentProfileNotificationSettings;
     ai: AISettings;
     createdDate?: string;
     modifiedDate?: string;
 }
 
-export interface OutputSettings {
-    format: string;
-    groupBy: string;
-    maxItems: number;
-}
 
 export interface AISettings {
     enabled: boolean;
     model: string;
     key: string;
+}
+
+export interface ContentProfileNotificationSettings{
+    phoneNotification : boolean
+    emailNotification : boolean
 }
 
 export interface ContentSource {
@@ -92,20 +92,8 @@ export interface ContentDigest {
     profileKey: string;
     title: string;
     digestDate: string;      // DateTime (ISO)
-    items: DigestItem[];
     stats?: DigestStats;     // FinalizeDigest sonrası set ediliyor
     createdDate: string;     // DateTime (ISO)
-}
-
-export interface DigestItem {
-    contentId: string;       // Guid
-    title: string;
-    url: string;
-    category: string;
-    relevanceScore: number;
-    quality: string;
-    included: boolean;
-    decisionReason: string;
 }
 
 export interface DigestStats {
@@ -116,3 +104,21 @@ export interface DigestStats {
     averageRelevanceScore: number;
     categoryBreakdown: Record<string, number>;
 }
+
+
+export interface ContentDigestItem {
+    id: string;
+    contentId: string;       // Guid
+    contentDigestId : string;
+    title: string;
+    url: string;
+    topic: string;
+    relevanceScore: number;
+    quality: string;
+    included: boolean;
+    decisionReason: string;
+    summary: string;
+    sourceId: string;
+    sourceName : string;
+}
+

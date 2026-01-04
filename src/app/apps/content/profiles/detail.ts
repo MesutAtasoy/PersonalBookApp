@@ -327,7 +327,15 @@ export class ContentProfileDetailComponent implements OnInit, OnDestroy {
     }
 
     runProfile(): void {
-        this._messageService.add({ severity: 'info', summary: 'Sync Triggered' });
+        this._confirmationService.confirm({
+            message: 'Are you sure you want to run manual this profile?',
+            accept: () => {
+                this._contentService.ingestManuallyContentProfile(this.profileDetail.id).subscribe(() => {
+                    this._messageService.add({severity: 'info', summary: 'Executing', detail: `Triggered ${this.profileDetail.name}`});
+                    this.loadSources();
+                });
+            }
+        });
     }
 
     viewLogs(): void {
