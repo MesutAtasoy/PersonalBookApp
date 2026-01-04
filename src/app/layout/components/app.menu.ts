@@ -109,6 +109,27 @@ export class AppMenu {
                         routerLink: ['/apps/tasks'],
                     },
                     {
+                        label: 'Content Intelligence',
+                        icon: 'pi pi-fw pi-book',
+                        items: [
+                            {
+                                label: 'Profiles',
+                                icon: 'pi pi-fw pi-user',
+                                routerLink: ['/apps/content/profiles'],
+                            },
+                            {
+                                label: 'Digests',
+                                icon: 'pi pi-fw pi-sparkles',
+                                routerLink: ['/apps/content/digests'],
+                            },
+                            {
+                                label: 'Logs',
+                                icon: 'pi pi-fw pi-wrench',
+                                routerLink: ['/apps/content/logs'],
+                            },
+                        ]
+                    },
+                    {
                         label: 'System Configuration',
                         icon: 'pi pi-fw pi-cog',
                         routerLink: ['/apps/system-configuration'],

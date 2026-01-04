@@ -22,6 +22,11 @@ export default [
         data: { breadcrumb: 'System Configuration' }
     },
     {
+        path: 'content',
+        loadChildren: () => import('./content/content.routes'),
+        data: { breadcrumb: 'Content Intelligence' }
+    },
+    {
         path: 'blog',
         loadChildren: () => import('./blog/blog.routes'),
         data: { breadcrumb: 'Blog' }
