@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { ActivatedRoute, RouterModule } from "@angular/router";
+import {ActivatedRoute, Router, RouterModule} from "@angular/router";
 import { Subject, takeUntil, finalize, debounceTime, distinctUntilChanged } from "rxjs";
 
 // PrimeNG Imports
@@ -214,7 +214,8 @@ export class ContentProfileDetailComponent implements OnInit, OnDestroy {
         private _messageService: MessageService,
         private _confirmationService: ConfirmationService,
         private _route: ActivatedRoute,
-        private _cdr: ChangeDetectorRef
+        private _cdr: ChangeDetectorRef,
+        public _router: Router
     ) {}
 
     ngOnInit(): void {
@@ -222,9 +223,7 @@ export class ContentProfileDetailComponent implements OnInit, OnDestroy {
 
         this.profileActions = [
             { label: 'Run Sync', icon: 'pi pi-refresh', command: () => this.runProfile() },
-            { label: 'View Logs', icon: 'pi pi-book', command: () => this.viewLogs() },
-            { separator: true },
-            { label: 'Delete Profile', icon: 'pi pi-trash', styleClass: 'text-red-500' }
+            { label: 'View Logs', icon: 'pi pi-book', command: () => this.viewLogs() }
         ];
 
         this._searchSubject.pipe(
@@ -332,7 +331,9 @@ export class ContentProfileDetailComponent implements OnInit, OnDestroy {
     }
 
     viewLogs(): void {
-        console.log('Opening logs for profile:', this.profileKey);
+        this._router.navigate(['apps/content/logs'], {
+            queryParams: { profileKey: this.profileDetail.key }
+        });
     }
 
     getSourceSeverity(type: string): any {
