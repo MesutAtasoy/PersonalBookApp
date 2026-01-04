@@ -120,7 +120,7 @@ import { PaginationFilter, SearchFilter } from "@/core/pagination/personal-book.
                                     <p-tag [value]="item.quality" [severity]="item.quality === 'High' ? 'success' : 'secondary'" styleClass="text-[9px] font-black uppercase"></p-tag>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] font-black text-slate-300 uppercase tracking-tighter italic">"{{ item.decisionReason }}"</span>
+                                    <span class="text-[15px] font-black tracking-tighter italic">"{{ item.decisionReason }}"</span>
                                 </div>
                                 <button pButton icon="pi pi-external-link" label="Source" class="p-button-text p-button-sm ml-auto font-black text-indigo-500"></button>
                             </div>

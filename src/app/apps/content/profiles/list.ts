@@ -202,9 +202,9 @@ import {Router} from "@angular/router";
                     </div>
                 </div>
 
-                <div class="section-container border-l-4"
+                <div class="section-container border-l-4 mb-4"
                      [ngClass]="editingProfile.ai.enabled ? 'border-indigo-500 bg-indigo-50/30' : 'border-slate-200 bg-slate-50/50'">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-4 ml-4">
                         <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                             <i class="pi pi-bolt"
                                [ngClass]="editingProfile.ai.enabled ? 'text-amber-500' : 'text-slate-400'"></i> AI
@@ -212,7 +212,7 @@ import {Router} from "@angular/router";
                         </h3>
                         <p-toggle-switch [(ngModel)]="editingProfile.ai.enabled"></p-toggle-switch>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 transition-all"
+                    <div class="grid grid-cols-2 gap-4 transition-all ml-4"
                          [ngStyle]="{'opacity': editingProfile.ai.enabled ? '1' : '0.4', 'pointer-events': editingProfile.ai.enabled ? 'auto' : 'none'}">
                         <div class="flex flex-col gap-2">
                             <label
@@ -333,9 +333,16 @@ export class ContentProfilesComponent implements OnInit, OnDestroy {
     sortOrder: any = {column: 'name', direction: 'asc'};
 
     aiModels = [
-        {label: 'GPT-5.2 (Deep Reasoning)', value: 'gpt-5.2-thinking', detail: 'Complex logic'},
-        {label: 'Claude 4.5 Opus', value: 'claude-4.5-opus', detail: 'Creative writing'},
-        {label: 'Gemini 3 Pro', value: 'gemini-3-pro', detail: 'Google ecosystem'}
+        {
+            label: 'Gemini 2.5 Flash-Lite',
+            value: 'gemini-2.5-flash-lite',
+            detail: 'Fastest flash model optimized for cost-efficiency and high throughput.'
+        },
+        {
+            label: 'Gemini 2.5 Flash',
+            value: 'gemini-2.5-flash',
+            detail: 'Best model in terms of price-performance, offering well-rounded capabilities. 2.5 Flash is best for large scale processing, low-latency, high volume tasks that require thinking, and agentic use cases.'
+        }
     ];
 
     formats = ['JSON', 'Markdown', 'HTML', 'RSS'];
@@ -409,8 +416,8 @@ export class ContentProfilesComponent implements OnInit, OnDestroy {
             },
             ai: {
                 enabled: true,
-                model:'gpt-5.2-thinking',
-                key:''
+                model: 'gpt-5.2-thinking',
+                key: ''
             }
         }
         ;
@@ -468,7 +475,11 @@ export class ContentProfilesComponent implements OnInit, OnDestroy {
             message: 'Are you sure you want to run manual this profile?',
             accept: () => {
                 this._contentService.ingestManuallyContentProfile(profile.id).subscribe(() => {
-                    this._messageService.add({severity: 'info', summary: 'Executing', detail: `Triggered ${profile.name}`});
+                    this._messageService.add({
+                        severity: 'info',
+                        summary: 'Executing',
+                        detail: `Triggered ${profile.name}`
+                    });
                     this.loadProfiles();
                 });
             }
