@@ -85,7 +85,7 @@ import {Router} from "@angular/router";
                                                    styleClass="text-[9px] font-black uppercase px-3 bg-emerald-50 text-emerald-600 border-none"></p-tag>
                                             <p-tag [value]="digest.stats.rejectedCount + ' Filtered'" severity="secondary"
                                                    styleClass="text-[9px] font-black uppercase px-3 bg-slate-100 text-slate-500 border-none"></p-tag>
-                                            <p-tag [value]="(digest.stats.averageRelevanceScore * 100 | number:'1.0-0') + '% Match'"
+                                            <p-tag [value]="(digest.stats.averageRelevanceScore  | number:'1.0-0') + '% Match'"
                                                    styleClass="text-[9px] font-black uppercase px-3 bg-indigo-50 text-indigo-600 border-none"></p-tag>
                                         </div>
 

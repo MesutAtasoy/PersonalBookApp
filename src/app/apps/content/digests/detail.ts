@@ -47,7 +47,7 @@ import { PaginationFilter, SearchFilter } from "@/core/pagination/personal-book.
                     <div class="flex gap-4" *ngIf="digest?.stats">
                         <div class="px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <div class="text-[10px] font-bold text-slate-400 uppercase">Avg Match</div>
-                            <div class="text-xl font-black text-slate-800">{{ (digest?.stats?.averageRelevanceScore || 0) * 100 | number:'1.0-0' }}%</div>
+                            <div class="text-xl font-black text-slate-800">{{ (digest?.stats?.averageRelevanceScore || 0) | number:'1.0-0' }}%</div>
                         </div>
                         <div class="px-6 py-3 bg-indigo-600 rounded-2xl text-center shadow-lg shadow-indigo-100">
                             <div class="text-[10px] font-bold text-indigo-200 uppercase text-white/70">Curated</div>
@@ -158,11 +158,15 @@ export class ContentDigestComponent implements OnInit, OnDestroy {
 
     pagination: PaginationFilter = { pageNumber: 1, pageSize: 10 };
     sortOptions = [
-        { label: 'Highest Score', value: 'relevanceScore,desc' },
-        { label: 'Newest First', value: 'createdDate,desc' },
-        { label: 'Topic A-Z', value: 'topic,asc' }
+        { label: 'Highest Score', value: 'relevancescore,desc' },
+        { label: 'Lowest Score', value: 'relevancescore,asc' },
+        { label: 'Newest First', value: 'createddate,desc' },
+        { label: 'Oldest First', value: 'createddate,asc' },
+        { label: 'Topic A-Z', value: 'sourcename,asc' },
+        { label: 'Topic Z-A', value: 'sourcename,desc' }
+
     ];
-    selectedSort: string = 'relevanceScore,desc';
+    selectedSort: string = 'relevancescore,desc';
 
     private _searchSubject = new Subject<string>();
     private _unsubscribeAll = new Subject<any>();
@@ -204,7 +208,7 @@ export class ContentDigestComponent implements OnInit, OnDestroy {
         const filter: any = {
             paginationFilter: this.pagination,
             search: { value: this.searchText },
-            // order: { column, direction: direction as any },
+            order: { column, direction: direction as any },
             contentDigestId : this.digestId
         };
 
