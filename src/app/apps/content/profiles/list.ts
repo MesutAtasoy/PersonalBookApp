@@ -28,6 +28,7 @@ import {ContentProfile} from "@/apps/content/content.types";
 import {PaginationFilter, SearchFilter} from "@/core/pagination/personal-book.pagination";
 import {PersonalContentService} from "@/apps/content/content.service";
 import {Router} from "@angular/router";
+import {Textarea} from "primeng/textarea";
 
 @Component({
     selector: 'app-content-profiles',
@@ -37,7 +38,7 @@ import {Router} from "@angular/router";
         InputTextModule, DialogModule, ToastModule, ConfirmDialogModule,
         ToggleSwitchModule, ChipModule, SelectModule, InputNumberModule,
         SkeletonModule, TagModule, IconFieldModule, InputIconModule, TooltipModule,
-        PaginatorModule, MenuModule
+        PaginatorModule, MenuModule, Textarea
     ],
     providers: [MessageService, ConfirmationService],
     template: `
@@ -211,6 +212,10 @@ import {Router} from "@angular/router";
                             Settings
                         </h3>
                         <p-toggle-switch [(ngModel)]="editingProfile.ai.enabled"></p-toggle-switch>
+                    </div>
+                    <div class="flex flex-col gap-2 ml-4 mb-4">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Role</label>
+                        <textarea pTextarea [(ngModel)]="editingProfile.ai.role" class="w-full" rows="4" placeholder="Briefly describe the role"></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-4 transition-all ml-4"
                          [ngStyle]="{'opacity': editingProfile.ai.enabled ? '1' : '0.4', 'pointer-events': editingProfile.ai.enabled ? 'auto' : 'none'}">
@@ -417,7 +422,8 @@ export class ContentProfilesComponent implements OnInit, OnDestroy {
             ai: {
                 enabled: true,
                 model: 'gpt-5.2-thinking',
-                key: ''
+                key: '',
+                role: ''
             }
         }
         ;

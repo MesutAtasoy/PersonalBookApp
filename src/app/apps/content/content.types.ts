@@ -17,6 +17,7 @@ export interface AISettings {
     enabled: boolean;
     model: string;
     key: string;
+    role: string;
 }
 
 export interface ContentProfileNotificationSettings{
